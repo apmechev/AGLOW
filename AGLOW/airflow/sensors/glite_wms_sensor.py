@@ -88,6 +88,8 @@ class gliteSensor(BaseSensorOperator):
 
 
     def count_successes(self,jobs):
+        """Counts the number of Completed jobs in the results of the glite-wms-job-status
+        output.  """
         exit_codes=[]
         jobs_list=[]
         for j in jobs.split('=========================================================================='):
@@ -102,7 +104,7 @@ class gliteSensor(BaseSensorOperator):
                 numdone+=1
         if 'Done' in statuses[0]: 
             self.job_status = 'Done'
-        if numdone==len(jobs):
+        if numdone == len(jobs):
             self.job_status='Done'
         if self.job_status == 'Waiting':
             for i in statuses:
@@ -110,6 +112,6 @@ class gliteSensor(BaseSensorOperator):
                     self.job_status = 'Waiting'
                     return  statuses[1:]
                 self.job_status = "Done"
-        logging.info(numdone)
+        logging.info("Num_jobs_done "+str(numdone))
         return statuses[1:]
         
