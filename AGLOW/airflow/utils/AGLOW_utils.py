@@ -56,7 +56,7 @@ def get_user_proxy(username):
 def make_srmfile_from_step_results(prev_step_token_task):
     pass
 
-def modify_parset(parset_path, freq_res, time_res, flags ):
+def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
     """Takes in a base_parset path and changes the time and frequency resolution parameters 
     of this parset. Saves it into a tempfile. Returns the tempfile_path"""
     fh, abs_path = mkstemp()
@@ -68,6 +68,18 @@ def modify_parset(parset_path, freq_res, time_res, flags ):
                                               "! avg_freqstep         = "+str(int(freq_res)), filedata)
         filedata = re.sub(r'\! flag_baselines\s+=\s+\W\s+\S+\s+\W',
                                               "! flag_baselines    = "+flags+ "\n", filedata)
+        file_ending=".MS"
+        if 'gsmcal_solve' in filedata:
+            file_ending='.ms'
+        filedata = re.sub(r'\! target_input_pattern\s+=\s\S+',
+                                  "! target_input_pattern    = " + str(OBSID) + "*" + file_ending,  filedata)
+        if 'calib_cal' in filedata:
+            file_ending=".MS"
+        if 'h5imp_cal' in filedata:
+            file_ending=".dppp_prep_cal"
+        filedata = re.sub(r'\! cal_input_pattern\s+=\s\S+',
+                              "! cal_input_pattern    = "+str(OBSID)+"*"+file_ending,
+                            filedata)
 
     with open(abs_path, 'w') as pars_file:
         pars_file.write(filedata)
@@ -83,14 +95,16 @@ def modify_parset_from_fields_task(parsets_dict={}, fields_task=None, time_avg=8
     targ_time = time_avg/int(math.floor(float(field_dict['targ_time_resolution'])))
     cal_freq = int(field_dict['calib_freq_resolution'])/freq_avg
     cal_time = time_avg/int(math.floor(float(field_dict['calib_time_resolution'])))
+    cal_OBSID = field_dict['calib_OBSID']
+    targ_OBSID = field_dict['target_OBSID']
     resulting_parsets = {}
     if not flags:
         flags = ", ".join(field_dict['baseline_filter'].split(" ")) 
     for p_name, p_path in parsets_dict.items():
         if "Calib" in p_name:
-            resulting_parsets[p_name] = modify_parset(p_path, cal_freq, cal_time, flags)
+            resulting_parsets[p_name] = modify_parset(p_path, cal_freq, cal_time, cal_OBSID, flags)
         if "Targ" in p_name:
-            resulting_parsets[p_name] = modify_parset(p_path, targ_freq, targ_time, flags)
+            resulting_parsets[p_name] = modify_parset(p_path, targ_freq, targ_time, targ_OBSID, flags)
     return resulting_parsets
 
 
@@ -172,14 +186,16 @@ def get_srmfile_from_dir(srmdir,field_task, **context):
             "TARG_OBSID": targ_OBSID}
 
 
-def get_next_field(fields_file,**context):
+def get_next_field(fields_file, indicator='SND', **context):
     """Determines the next field to be processed,
     uses the set_field_status function to set its status to
-    started()
+    started().
+    By default it locks SARA tokens (marked SND in the first column of the
+    fields_file), however using the indicator variable, other files can be locked
 
     """
     for i in open(fields_file,'r').read().split('\n'):
-        if not i.split(',')[0] == 'SND':
+        if not i.split(',')[0] == indicator:
             continue
         l=i.split(',')
         break
@@ -240,10 +256,10 @@ def count_grid_files(srmlist_file, task_if_less,
     for line in open(srmlist_file).readlines():
         srml.append(line)
     num_files = count_files_uberftp('gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/pipelines/'+str(pipeline)+'/'+str(step)+'/'+str(srml.OBSID))
-    if num_files <= min_num_files:
-        return task_if_less
-    else:
+    if num_files >= min_num_files:
         return task_if_more
+    else:
+        return task_if_less
 
 
 def stage_if_needed(stage_task, run_if_staged, run_if_not_staged,
