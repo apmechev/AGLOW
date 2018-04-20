@@ -56,6 +56,9 @@ def get_user_proxy(username):
 def make_srmfile_from_step_results(prev_step_token_task):
     pass
 
+def check_if_enoug_output_files(outp_task):
+    pass
+
 def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
     """Takes in a base_parset path and changes the time and frequency resolution parameters 
     of this parset. Saves it into a tempfile. Returns the tempfile_path"""
@@ -76,7 +79,7 @@ def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
         if 'calib_cal' in filedata:
             file_ending=".MS"
         if 'h5imp_cal' in filedata:
-            file_ending=".dppp_prep_cal"
+            file_ending=".ndppp_prep_cal"
         filedata = re.sub(r'\! cal_input_pattern\s+=\s\S+',
                               "! cal_input_pattern    = "+str(OBSID)+"*"+file_ending,
                             filedata)
@@ -245,6 +248,21 @@ def count_from_task(srmlist_task, srmfile_name, task_if_less,
     return(count_grid_files(srmlist, task_if_less,task_if_more, pipeline=pipeline,step=step, min_num_files=min_num_files))
 
 
+def check_folder_for_files(folder,number=1):
+    """Raises an exception (IE FAILS) if the (gsiftp) folder has less than
+    'number' files
+    
+    By default fails if folder is empty"""
+    num_files = count_files_uberftp(folder)
+    if num_files < number:
+        raise ValueError("Not enough Files ("+
+                str(num_files)+"<"+str(number)+") in "+ str(folder))
+    return
+
+def check_folder_for_files_from_task(taskid, xcom_key, number, **context):
+    path = context['ti'].xcom_pull(task_ids=taskid)[xcom_key]
+    check_folder_for_files(path,number)
+    
 
 def count_grid_files(srmlist_file, task_if_less,
         task_if_more, pipeline="SKSP",step='pref_cal1',min_num_files=1):

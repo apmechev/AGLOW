@@ -63,6 +63,8 @@ class TokenCreator(BaseOperator):
             sbx_task,
             staging_task,
             srms_task = None,
+            fields_task = None,
+            pc_database=None,
             subband_prefix = 'SB',
             subband_suffix = '_',
             token_type = 'test_',
@@ -71,8 +73,10 @@ class TokenCreator(BaseOperator):
             *args, **kwargs):
 
         super(TokenCreator, self).__init__(*args, **kwargs)
+        self.pc_database = pc_database
         self.tok_config  =  tok_config  
         self.sbx_task = sbx_task
+        self.fields_task = fields_task
         self.subband_prefix = subband_prefix
         self.subband_suffix = subband_suffix
         self.staging_task = staging_task
@@ -91,17 +95,26 @@ class TokenCreator(BaseOperator):
         if not srms:
             print("Could not get the list of staged srms!")
         pc = get_picas_credentials.picas_cred()
+        if self.pc_database:
+            pc.database = self.pc_database
+        if self.fields_task:
+            app = context['task_instance'].xcom_pull(task_ids=self.fields_task)['field_name']
+        else:
+            app = srms.OBSID
+        self.t_type= self.t_type+app
         tok_settings = yaml.load(open(self.tok_config,'rb'))['Token']
         pipe_type = tok_settings['PIPELINE_STEP']
-        th = Token.Token_Handler(t_type=self.t_type+srms.OBSID,
+        th = Token.Token_Handler(t_type=self.t_type,
                     uname=pc.user,pwd=pc.password,dbn=pc.database)
         th.add_overview_view()
         th.add_status_views()
         th.reset_tokens('error')
+        th.reset_tokens('done')
+        th.reset_tokens('locked')
         th.add_view(view_name = pipe_type, cond='doc.PIPELINE_STEP == "{0}" '.format(pipe_type), emit_value2='doc.status')
         
-        logging.info('Token type is '+self.t_type+srms.OBSID)
-        logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+srms.OBSID+'/_view/overview_total')
+        logging.info('Token type is '+self.t_type)
+        logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+'/_view/overview_total')
         logging.info("Token settings are :")
         for i in tok_settings.items():
             logging.info(str(i))
@@ -130,7 +143,8 @@ class TokenCreator(BaseOperator):
         sbx_name = context['task_instance'].xcom_pull(task_ids=self.sbx_task)["SBX_location"]
         self.tokens.add_keys_to_list('SBXloc',"gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/sandbox/"+sbx_name)
         results = dict()
-        results['token_type'] = str(self.t_type+srms.OBSID)
+        results['output_dir'] = self.tok_config('RESULTS_DIR')+"/"+ str(srms.OBSID)
+        results['token_type'] = str(self.t_type)
         results['view'] = pipe_type
         results['OBSID'] = srms.OBSID
         return results
@@ -190,11 +204,13 @@ class TokenUploader(BaseOperator):
             self,
             token_task, 
             upload_file=None, 
-            parset_task=None, 
+            parset_task=None,
+            pc_database=None,
             output_encoding='utf-8',
             *args, **kwargs):
         
         super(TokenUploader, self).__init__(*args, **kwargs)
+        self.pc_database = pc_database
         self.token_task = token_task
         self.parset_task = parset_task
         self.output_encoding = output_encoding
@@ -209,6 +225,8 @@ class TokenUploader(BaseOperator):
         if self.upload_file == None and self.parset_task == None: 
             raise(Exception("No Parset task nor upload file specified!"))
         pc=get_picas_credentials.picas_cred()
+        if self.pc_database:
+            pc.database = self.pc_database
         tok_dict=context['task_instance'].xcom_pull(task_ids=self.token_task)
         token_id=tok_dict['token_type']
         view=tok_dict['view']
@@ -233,6 +251,8 @@ class TokenUploader(BaseOperator):
 
     def upload(self, token_id, view, file_name):
         pc=get_picas_credentials.picas_cred()
+        if self.pc_database:                                                                                                                                                                                                                                                              
+            pc.database = self.pc_database
         th=Token.Token_Handler(t_type=token_id,
                     uname=pc.user,pwd=pc.password,dbn=pc.database)
         self.tokens=th.list_tokens_from_view(view)
@@ -274,11 +294,13 @@ class ModifyTokenStatus(BaseOperator):
     def __init__(
             self,
             token_task,
+            pc_database=None,
             modification={'reset':'todo'}, #Dictionary of list of modifications
             output_encoding='utf-8',
             *args, **kwargs):
             
         super(ModifyTokenStatus, self).__init__(*args, **kwargs)
+        self.pc_database = pc_database
         self.token_task=token_task
         self.output_encoding = output_encoding
         self.modification=modification
@@ -290,6 +312,8 @@ class ModifyTokenStatus(BaseOperator):
         which will be cleaned afterwards
         """
         pc=get_picas_credentials.picas_cred()
+        if self.pc_database:
+            pc.database = self.pc_database
         tok_dict=context['task_instance'].xcom_pull(task_ids=self.token_task)
         token_id=tok_dict['token_type']
         th=Token.Token_Handler(t_type=token_id,
@@ -334,11 +358,13 @@ class ModifyTokenField(BaseOperator):
     def __init__(
             self,
             token_task,
+            pc_database=None,
             keyval=['CAL_OBSID','L123456'], #Dictionary of list of modifications
             output_encoding='utf-8',
             *args, **kwargs):
             
         super(ModifyTokenStatus, self).__init__(*args, **kwargs)
+        self.pc_database = pc_database
         self.token_task=token_task
         self.output_encoding = output_encoding
         self.modification=modification
