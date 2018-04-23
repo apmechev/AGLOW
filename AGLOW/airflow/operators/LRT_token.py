@@ -143,7 +143,7 @@ class TokenCreator(BaseOperator):
         sbx_name = context['task_instance'].xcom_pull(task_ids=self.sbx_task)["SBX_location"]
         self.tokens.add_keys_to_list('SBXloc',"gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/sandbox/"+sbx_name)
         results = dict()
-        results['output_dir'] = self.tok_config('RESULTS_DIR')+"/"+ str(srms.OBSID)
+        results['output_dir'] = tok_settings['RESULTS_DIR']+"/"+ str(srms.OBSID)
         results['token_type'] = str(self.t_type)
         results['view'] = pipe_type
         results['OBSID'] = srms.OBSID
