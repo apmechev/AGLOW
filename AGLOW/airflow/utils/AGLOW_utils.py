@@ -115,12 +115,12 @@ def set_user_proxy_var(proxy_location):
     os.environ['X509_USER_PROXY']=proxy_location
 
 
-def set_field_status(fields_file, field_name, status):
+def set_field_status(fields_file, cal_OBSID, targ_OBSID, field_name, status):
     fh, abs_path = mkstemp()
     with fdopen(fh,'w') as tmp_f:
         with open(fields_file,'r') as f:
             for line in f:
-                if line.split(',')[11]==field_name:
+                if line.split(',')[11] == field_name and line.split(',')[1] == targ_OBSID and line.split(',')[6] == calib_OBSID:
                     tmp_f.write(str(','.join([str(status)]+line.split(',')[1:])))
                 else:
                     tmp_f.write(line)
@@ -132,7 +132,10 @@ def set_field_status(fields_file, field_name, status):
 def set_field_status_from_taskid(fields_file, task_id, status, **context):
     """sets the field status as the status input variable"""
     field_data=context['ti'].xcom_pull(task_id)
-    set_field_status(fields_file, field_data['field_name'], status)
+    field_name = field_data['field_name']
+    cal_OBSID = field_data['calib_OBSID']
+    targ_OBSID = field_data['target_OBSID']
+    set_field_status(fields_file, cal_OBSID, targ_OBSID, field_name, status)
 
 
 def set_field_status_from_task_return(fields_file, task_id, status_task, **context):
@@ -141,7 +144,10 @@ def set_field_status_from_task_return(fields_file, task_id, status_task, **conte
     """
     field_data=context['ti'].xcom_pull(task_id)
     return_data=context['ti'].xcom_pull(status_task)
-    set_field_status(fields_file, field_data['field_name'], return_data)
+    field_name = field_data['field_name']
+    cal_OBSID = field_data['calib_OBSID']
+    targ_OBSID = field_data['target_OBSID']
+    set_field_status(fields_file, cal_OBSID, targ_OBSID, field_name, return_data)
 
 
 def get_field_location_from_srmlist(srmlist_task, srmfile_key='targ_srmfile', **context):
