@@ -86,6 +86,7 @@ def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
 
     with open(abs_path, 'w') as pars_file:
         pars_file.write(filedata)
+        os.chmod(abs_path, 0o666 )
     return(abs_path)
 
 
@@ -120,7 +121,7 @@ def set_field_status(fields_file, cal_OBSID, targ_OBSID, field_name, status):
     with fdopen(fh,'w') as tmp_f:
         with open(fields_file,'r') as f:
             for line in f:
-                if line.split(',')[11] == field_name and line.split(',')[1] == targ_OBSID and line.split(',')[6] == calib_OBSID:
+                if line.split(',')[11] == field_name and "L"+line.split(',')[1] == targ_OBSID and "L"+line.split(',')[6] == cal_OBSID:
                     tmp_f.write(str(','.join([str(status)]+line.split(',')[1:])))
                 else:
                     tmp_f.write(line)
