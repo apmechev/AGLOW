@@ -6,7 +6,7 @@ import os
 
 setup(name='AGLOW',
       packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils'], #'GRID_LRT', 'GRID_LRT/Staging', 'GRID_LRT/Application', 'GRID_LRT/couchdb'],
-      version='0.0.9',
+      version='0.0.9x',
       setup_requires=[
         'apache-airflow',
         'grid-lrt'
@@ -22,7 +22,7 @@ setup(name='AGLOW',
       author='Alexandar Mechev',
       author_email='LOFAR@apmechev.com',
       url='https://www.github.com/apmechev/AGLOW/',
-      download_url = 'https://github.com/apmechev/AGLOW/archive/v0.0.9.tar.gz',
+      download_url = 'https://github.com/apmechev/AGLOW/archive/v0.0.9x.tar.gz',
       keywords = ['surfsara', 'distributed-computing', 'LOFAR', 'workflow','airflow'],
       classifiers = ['Development Status :: 2 - Pre-Alpha',
       'Intended Audience :: Developers',
