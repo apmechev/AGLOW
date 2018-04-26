@@ -108,9 +108,6 @@ class TokenCreator(BaseOperator):
                     uname=pc.user,pwd=pc.password,dbn=pc.database)
         th.add_overview_view()
         th.add_status_views()
-        th.reset_tokens('error')
-        th.reset_tokens('done')
-        th.reset_tokens('locked')
         th.add_view(view_name = pipe_type, cond='doc.PIPELINE_STEP == "{0}" '.format(pipe_type), emit_value2='doc.status')
         
         logging.info('Token type is '+self.t_type)
