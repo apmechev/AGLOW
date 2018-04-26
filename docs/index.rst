@@ -14,6 +14,7 @@ This package is built by Alexandar Mechev and the LOFAR e-infra group at Leiden 
    :caption: Contents:
 
    installing
+   utils
 
 Indices and tables
 ==================
