@@ -63,9 +63,9 @@ def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
     """Takes in a base_parset path and changes the time and frequency resolution parameters 
     of this parset. Replaces the OBSID based on the type of prefactor
     step (pref_cal1,cal2 etc.)
-    Saves it into a tempfile. Returns the tempfile_path
-    
+    Saves it into a tempfile. Returns the tempfile_path 
     Args:
+
     :param parset_path: Location of the parset that needs to be modfied
     :type parset_path: str
     :param freq_res: Frequency averaging parameter
@@ -76,6 +76,7 @@ def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
     :type OBSID: str
 
     :returns: str
+
     """
     fh, abs_path = mkstemp()
     with open(parset_path, 'r') as file:
