@@ -75,7 +75,7 @@ def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
     :param OBSID: Observation ID
     :type OBSID: str
 
-    :returns: str
+    :returns: str -- the path to the modified parset
 
     """
     fh, abs_path = mkstemp()
