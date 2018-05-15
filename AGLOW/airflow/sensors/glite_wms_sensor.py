@@ -26,13 +26,12 @@ from airflow.utils.decorators import apply_defaults
 
 class gliteSensor(BaseSensorOperator):
     """
-    Runs a sql statement until a criteria is met. It will keep trying until
-    sql returns no row, or if the first cell in (0, '0', '').
+    An sensor initialized with the glite-wms job ID. It tracks the status of the job and 
+    returns only when all the jobs have exited (finished OK or not)
 
-    :param conn_id: The connection to run the sensor against
-    :type conn_id: string
-    :param sql: The sql to run. To pass, it needs to return at least one cell
-        that contains a non-zero / empty string value.
+    :param submit_task: The task which submitted the jobs (should return a glite-wms job ID)
+    :type submit_task: string
+    :param success_threshold: Currently a dummy
     """
     template_fields = ()
     template_ext = ()
@@ -52,6 +51,10 @@ class gliteSensor(BaseSensorOperator):
                 timeout=timeout, *args, **kwargs)
 
     def poke(self, context):
+        """Function called every (by default 2) minutes. It calls glite-wms-job-status
+        on the jobID and exits if all the jobs have finished/crashed. 
+
+        """
         self.jobID=context['task_instance'].xcom_pull(task_ids=self.submit_task)
         if self.jobID==None:
             raise RuntimeError("Could not get the jobID from the "+str(self.submit_task)+" task. ")
@@ -89,7 +92,11 @@ class gliteSensor(BaseSensorOperator):
 
     def count_successes(self,jobs):
         """Counts the number of Completed jobs in the results of the glite-wms-job-status
-        output.  """
+        output. Returns all the job statuses and sets self.job_status if it's Done
+        
+        :param jobs: A string containing the full output of glite-wms-job-status
+        :type jobs: str
+        """
         exit_codes=[]
         jobs_list=[]
         for j in jobs.split('=========================================================================='):
