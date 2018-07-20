@@ -3,6 +3,7 @@
 #from distutils.core import setup
 from setuptools import setup
 from setuptools.command.install import install
+from AGLOW.version import __version__
 import os
 
 class PostInstallCommand(install):
@@ -15,7 +16,7 @@ class PostInstallCommand(install):
 
 setup(name='AGLOW',
       packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils'], #'GRID_LRT', 'GRID_LRT/Staging', 'GRID_LRT/Application', 'GRID_LRT/couchdb'],
-      version='v0.0.9.3',
+      version=__version__,
       setup_requires=[
           ],
       tests_require=[
