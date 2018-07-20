@@ -10,7 +10,7 @@ setup(name='AGLOW',
       setup_requires=[
           ],
       tests_require=[
-        'pytest', 
+          'pytest', 
           ],
       install_requires=[
           'apache-airflow',
