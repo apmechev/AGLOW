@@ -2,7 +2,16 @@
 
 #from distutils.core import setup
 from setuptools import setup
+from setuptools.command.install import install
 import os
+
+class PostInstallCommand(install):
+    """Post-installation for installation mode."""
+    def run(self):
+        # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
+        dirs =  get_airflow_directories()
+        install.run(self)
+
 
 setup(name='AGLOW',
       packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils'], #'GRID_LRT', 'GRID_LRT/Staging', 'GRID_LRT/Application', 'GRID_LRT/couchdb'],
@@ -43,3 +52,17 @@ setup(name='AGLOW',
       'Programming Language :: Python :: 3.4'] 
      )
 
+def get_airflow_directories():
+    import airflow
+    airflow_file = airflow.__file__
+    airflow_dirs = {}
+    airflow_dirs['airflow_base_dir'] = airflow_file.split('__init__')[0]
+    base_dir = airflow_dirs['airflow_base_dir']
+    airflow_dirs['airflow_contrib_dir'] = base_dir + 'contrib/'
+    airflow_dirs['airflow_operators_dir'] = base_dir + 'contrib/operators/'
+    airflow_dirs['airflow_sensors_dir'] = base_dir + 'contrib/sensors/'       
+    airflow_dirs['airflow_utils_dir'] = base_dir + 'utils/'
+    for key in airflow_dirs:
+        if not os.path.exists(airflow_dirs[key]):
+            raise RuntimeError("Directory %s doesn't exist" % airflow_dirs[key])
+    return airflow_dirs
