@@ -15,7 +15,7 @@ class PostInstallCommand(install):
 
 setup(name='AGLOW',
       packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils'], #'GRID_LRT', 'GRID_LRT/Staging', 'GRID_LRT/Application', 'GRID_LRT/couchdb'],
-      version='v0.0.9.2',
+      version='v0.0.9.3',
       setup_requires=[
           ],
       tests_require=[
