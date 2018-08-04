@@ -89,9 +89,8 @@ def calibrator_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     
     #Create the tokens and populate the srm.txt 
     tokens_cal = TokenCreator(task_id='token_cal',
-            sbx_task='sbx',
-            staging_task ='check_calstaged',
-            parent_dag=True,
+            sbx_task={'name':'sbx', 'parent_dag':False},
+            staging_task ={'name':'check_calstaged', 'parent_dag':True},
             token_type=field_name,
             tok_config =args_dict['pref_cal1_cfg'],
             files_per_token=1,
@@ -135,10 +134,9 @@ def calibrator_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
             dag=dag)
     
     tokens_cal2 = TokenCreator( task_id='token_cal2',
-            staging_task='check_calstaged',
-            sbx_task='sbx_cal2',
+            staging_task={'name':'check_calstaged','parent_dag':True},
+            sbx_task={'name':'sbx_cal2','parent_dag':False},
             token_type=field_name,
-            parent_dag=True,
             files_per_token=999,
             tok_config=args_dict['pref_cal2_cfg'],
             dag=dag)

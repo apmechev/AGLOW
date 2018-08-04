@@ -88,13 +88,12 @@ def target_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     
     #Create the tokens and populate the srm.txt 
     tokens_targ = TokenCreator(task_id='token_targ',
-            sbx_task='sbx',
-            staging_task ='check_targstaged',
-            srms_task='get_srmfiles',
+            sbx_task={'name':'sbx','parent_dag':False},
+            staging_task ={'name':'check_targstaged','parent_dag':True},
+            srms_task={'name':'get_srmfiles','parent_dag':True},
             token_type=field_name,
             tok_config =args_dict['pref_targ1_cfg'],
             files_per_token=1,
-            parent_dag=True,
             dag=dag)
     
     #Upload the parset to all the tokens
@@ -133,13 +132,17 @@ def target_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     sandbox_targ2 = LRTSandboxOperator(task_id='sbx_targ2', 
             sbx_config=args_dict['pref_targ2_cfg'],
             dag=dag)
-    
+   
+    targ2_srmlist_from_storage = Storage_to_Srmlist(task_id='srmlist_from_targ1',
+              token_task='token_targ',
+              dag=dag)
+
     tokens_targ2 = TokenCreator( task_id='token_targ2',
-            staging_task='check_targstaged',
-            sbx_task='sbx_targ2',
+            staging_task={'name':'srmlist_from_targ1','parent_dag':False},
+            sbx_task={'name':'sbx_targ2','parent_dag':False},
             token_type=field_name,                                                                           
-            files_per_token=999,
-            parent_dag=True,
+            files_per_token=10,
+            subband_prefix='AB',
             tok_config=args_dict['pref_targ2_cfg'],
             dag=dag)
     
@@ -165,7 +168,7 @@ def target_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     all_files_done = PythonOperator(
         task_id = 'all_files_done',
         python_callable = check_folder_for_files_from_task,
-        op_args = ['token_targ2','output_dir', 25],
+        op_args = ['token_targ2','output_dir', None],
         dag=dag
         )
 
@@ -183,7 +186,7 @@ def target_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     #Branch if targibrator already processed
 
     sandbox_targ >> tokens_targ >> parset_targ >>  submit_targ >> wait_for_run_targ
-    wait_for_run_targ >> targ1_files_done >> sandbox_targ2 >> tokens_targ2 >> parset_targ2 >> submit_targ2 >> wait_for_run_targ2
+    wait_for_run_targ >> targ1_files_done >> targ2_srmlist_from_storage >> sandbox_targ2 >> tokens_targ2 >> parset_targ2 >> submit_targ2 >> wait_for_run_targ2
     
     wait_for_run_targ2 >> all_files_done >> archive_targ2 
     return dag
