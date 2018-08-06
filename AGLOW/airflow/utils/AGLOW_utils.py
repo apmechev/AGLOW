@@ -35,6 +35,8 @@ from airflow.models import Variable
 from airflow import settings
 from airflow.utils.log.logging_mixin import LoggingMixin
 from GRID_LRT.Staging.srmlist import srmlist
+from GRID_LRT import Token
+from GRID_LRT.get_picas_credentials import picas_cred
 import tempfile
 from tempfile import mkstemp
 log = LoggingMixin().log
@@ -45,6 +47,15 @@ Field_Statuses={'AAA':'Starting Processing',
                 'TTT':'Target Done',
                 'RRR':'Error',
                 'ZZZ':'Completed'}
+
+
+def get_task_instance(context, key, parent_dag=False ):
+    if not parent_dag:
+        return context['ti'].xcom_pull(task_ids=key)
+    else:
+        dag = context['dag']
+        return context['ti'].xcom_pull(dag_id=dag.parent_dag.dag_id, task_ids=key)
+
 
 def get_user_proxy(username):
     """
@@ -59,25 +70,32 @@ def make_srmfile_from_step_results(prev_step_token_task):
 def check_if_enoug_output_files(outp_task):
     pass
 
+
+def launch_processing_subdag(prev_task, **context):
+    task_dict = context['ti'].xcom_pull(prev_task)
+
+def archive_tokens_from_task(token_task, delete=False, **context):
+    """ Determines whic tokens to archive and saves them. delete if necessary
+    """
+    task_dict = context['ti'].xcom_pull(token_task)
+    t_type = task_dict['token_type']
+    archive_location = task_dict['output_dir']
+    archive_all_tokens(t_type, archive_location, delete=delete)
+
+
+def archive_all_tokens(token_type, archive_location, delete=False):
+    pc = picas_cred()
+    th = Token.Token_Handler(t_type=token_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
+    token_archive = th.archive_tokens(delete_on_save=delete, compress=True)
+    logging.info("Archived tokens from " + token_type + " and made an archive: " + token_archive)
+    logging.info(token_archive + " size is " + str(os.stat(token_archive).st_size))
+    subprocess.call(['globus-url-copy '+token_archive+" "+archive_location+"/"+token_archive.split('/')[-1]],shell=True)
+    logging.info("Resulting archive is at "+archive_location+"/"+token_archive.split('/')[-1])
+
+
 def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
     """Takes in a base_parset path and changes the time and frequency resolution parameters 
-    of this parset. Replaces the OBSID based on the type of prefactor
-    step (pref_cal1,cal2 etc.)
-    Saves it into a tempfile. Returns the tempfile_path 
-    Args:
-
-    :param parset_path: Location of the parset that needs to be modfied
-    :type parset_path: str
-    :param freq_res: Frequency averaging parameter
-    :type freq_res: int
-    :param time_res: Time averaging parameter
-    :type time_res: int
-    :param OBSID: Observation ID
-    :type OBSID: str
-
-    :returns: str -- the path to the modified parset
-
-    """
+    of this parset. Saves it into a tempfile. Returns the tempfile_path"""
     fh, abs_path = mkstemp()
     with open(parset_path, 'r') as file:
         filedata = file.read()
@@ -138,6 +156,7 @@ def set_field_status(fields_file, cal_OBSID, targ_OBSID, field_name, status):
         with open(fields_file,'r') as f:
             for line in f:
                 if line.split(',')[11] == field_name and "L"+line.split(',')[1] == targ_OBSID and "L"+line.split(',')[6] == cal_OBSID:
+                    logging.info("Setting field"+str(field_name)+" to status "+str(status))
                     tmp_f.write(str(','.join([str(status)]+line.split(',')[1:])))
                 else:
                     tmp_f.write(line)
@@ -177,11 +196,11 @@ def get_field_location_from_srmlist(srmlist_task, srmfile_key='targ_srmfile', **
     for i in  open(srmfile,'r').read().split():
         _s_list.append(i)
     if _s_list.LTA_location == 'juelich':
-        return "JD"
+        return "juelich"
     if _s_list.LTA_location == 'sara':
-        return "SD"
+        return "sara"
     if _s_list.LTA_location == 'poznan':
-        return "PD"
+        return "poznan"
     return "UNK"
 
 
@@ -196,14 +215,15 @@ def check_if_running_field(fields_file):
             return True
     return False
 
-def get_srmfile_from_dir(srmdir,field_task, **context):
+def get_srmfile_from_dir(srmdir,field_task, var_calib="SKSP_Prod_Calibrator_srm_file",
+        var_targ="SKSP_Prod_Target_srm_file", **context):
     field_data=context['ti'].xcom_pull(field_task)
     cal_OBSID=field_data['calib_OBSID']
     targ_OBSID=field_data['target_OBSID']
     calib_srmfile=srmdir+'srm'+str(cal_OBSID.split('L')[-1])+".txt"
     targ_srmfile=srmdir+'srm'+str(targ_OBSID.split('L')[-1])+".txt"
-    Variable.set("SKSP_Prod_Calibrator_srm_file",calib_srmfile)
-    Variable.set("SKSP_Prod_Target_srm_file",targ_srmfile)
+    Variable.set(var_calib, calib_srmfile)
+    Variable.set(var_targ, targ_srmfile)
     logging.info("Calib_srmfile is "+calib_srmfile)
     logging.info("Targ_srmfile is "+targ_srmfile)
     return {'cal_srmfile':calib_srmfile,
@@ -232,6 +252,7 @@ def get_next_field(fields_file, indicator='SND', **context):
             'calib_freq_resolution':l[8],
             'calib_time_resolution':l[9],
             'field_name':l[11],
+            'sanitized_field_name':l[11].replace('+','_'),
             'baseline_filter':l[12]}
  
     logging.info("Field Information is: "+str(field_information))
@@ -266,8 +287,9 @@ def get_var_from_task_decorator(Cls, upstream_task_id="", upstream_return_key=""
 
 def count_from_task(srmlist_task, srmfile_name, task_if_less,
                     task_if_more, pipeline="SKSP",step='pref_cal2',
-                    min_num_files=1, **context):
-    srmlist=context['ti'].xcom_pull(task_ids=srmlist_task)[srmfile_name]
+                    min_num_files=1, parent_dag=False, **context):
+    srmlist_task = get_task_instance(context, srmlist_task, parent_dag=parent_dag )
+    srmlist = srmlist_task[srmfile_name]
     return(count_grid_files(srmlist, task_if_less,task_if_more, pipeline=pipeline,step=step, min_num_files=min_num_files))
 
 
@@ -283,8 +305,21 @@ def check_folder_for_files(folder,number=1):
     return
 
 def check_folder_for_files_from_task(taskid, xcom_key, number, **context):
-    path = context['ti'].xcom_pull(task_ids=taskid)[xcom_key]
-    check_folder_for_files(path,number)
+    """Either uses number to see how many files should be there 
+    or checks the number of tokens in the view TODO:make this the right way"""
+    xcom_results = context['ti'].xcom_pull(task_ids=taskid)
+    path = xcom_results[xcom_key]
+    if isinstance(number,int):
+        check_folder_for_files(path,number)
+    else:
+        if 'view' in xcom_results.keys():
+            view = xcom_results['view']
+        if 'token_type' in xcom_results.keys():
+            t_type = xcom_results['token_type']
+        pc = picas_cred()
+        th = Token.Token_Handler(t_type=t_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
+        number = len(th.list_tokens_from_view(view))
+        check_folder_for_files(path,number)
     
 
 def count_grid_files(srmlist_file, task_if_less,
