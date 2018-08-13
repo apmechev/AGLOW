@@ -5,7 +5,8 @@ from airflow.contrib.operators.LRT_Sandbox import LRTSandboxOperator
 from airflow.contrib.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
 from airflow.contrib.operators.LRT_submit import LRTSubmit
 from airflow.contrib.operators.data_staged import Check_staged
-from airflow.contrib.sensors.glite_wms_sensor import gliteSensor
+from airflow.contrib.sensors.dcache_sensor import dcacheSensor
+
 from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.python_operator import BranchPythonOperator
@@ -61,7 +62,7 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     Variable.get("SKSP_Prod_Calibrator_srm_file_Juelich","")
     Variable.get("SKSP_Prod_Target_srm_file_Juelich","")
 
-    dag = DAG(dag_id=parent_dag_name+'.'+subdagname, default_args=dag_args, schedule_interval='@once' , catchup=False)
+    dag = DAG(dag_id=parent_dag_name+'.'+subdagname, default_args=dag_args, schedule_interval='@once' , catchup=True)
 
     if not args_dict:
                 args_dict = {
@@ -113,16 +114,14 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     
 #Stage the files from the srmfile
 
-#stage = LOFARStagingOperator_from_task( task_id='stage_cal',
-#        srmfile=calibsrmfile,
-#        dag=dag)
     stage = LOFARStagingOperator( task_id='stage_cal',
-        srmfile="SKSP_Prod_Calibrator_srm_file_Juelich",
+        srmfile={'name':'get_srmfiles','parent_dag':True},
+        srmkey='cal_srmfile',
         dag=dag)
 
-    check_calstaged = PythonOperator( task_id='check_calstaged' ,
-        python_callable = force_staging,
-        op_args=["SKSP_Prod_Calibrator_srm_file_Juelich"],
+    check_calstaged =  Check_staged( task_id='check_calstaged',
+            srmfile={'name':'get_srmfiles','parent_dag':True},
+            srmkey='cal_srmfile',
         dag=dag)
 
 
@@ -132,13 +131,12 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
         
 #Create the tokens and populate the srm.txt 
     tokens_cal = TokenCreator(task_id='token_cal',
-        sbx_task='sbx',
-        staging_task ='check_calstaged',
+        sbx_task={'name':'sbx','parent_dag':False},
+        staging_task ={'name':'check_calstaged', 'parent_dag':False},
         token_type=field_name,
-        parent_dag=True,
         tok_config=args_dict['pref_cal1_cfg'],
         pc_database = 'sksp2juelich',
-        fields_task = 'get_next_field' ,
+        fields_task = {'name':'get_next_field','parent_dag':True},
         files_per_token=1,
         dag=dag)
         
@@ -156,12 +154,11 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
         dag=dag)
      
     tokens_cal2 = TokenCreator( task_id='token_cal2',
-        staging_task='check_calstaged',
-        sbx_task='sbx_cal2',
-        parent_dag=True,
+        staging_task={'name':'check_calstaged','parent_dag':False},
+        sbx_task={'name':'sbx_cal2','parent_dag':False},
         token_type=field_name,
         files_per_token=999,
-        fields_task = 'get_next_field' ,
+        fields_task = {'name':'get_next_field','parent_dag':True} ,
         tok_config=args_dict['pref_cal2_cfg'],
         pc_database = 'sksp2juelich',
         dag=dag)
@@ -180,13 +177,12 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
         dag=dag)
         
     tokens_targ1 = TokenCreator( task_id='token_targ1',
-        staging_task='check_targstaged',
-        sbx_task='sbx_targ1',
-        srms_task='get_srmfiles',
+            staging_task={'name':'stage_targ','parent_dag':False},
+        sbx_task={'name':'sbx_targ1','parent_dag':False},
+        srms_task={'name':'get_srmfiles','parent_dag':True},
         token_type=field_name,
         files_per_token=1,
-        parent_dag=True,
-        fields_task = 'get_next_field' ,
+        fields_task = {'name':'get_next_field','parent_dag':True} ,
         tok_config=args_dict['pref_targ1_cfg'],
         pc_database = 'sksp2juelich',
         dag=dag)
@@ -199,7 +195,8 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
         pc_database = 'sksp2juelich',
         dag=dag)
 
-    branch_targ_if_staging_needed = BranchPythonOperator(                                                                                           task_id='branch_targ_if_staging_needed',
+    branch_targ_if_staging_needed = BranchPythonOperator(
+    task_id='branch_targ_if_staging_needed',
     provide_context=True,                   # Allows to access returned values from other tasks
     python_callable=stage_if_needed,
     op_args=['check_targstaged','files_staged_targ','stage_targ'],
@@ -216,14 +213,19 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     dag=dag)   
 
     stage_targ= LOFARStagingOperator( task_id='stage_targ',
-        srmfile="SKSP_Prod_Target_srm_file_Juelich",
+        srmfile={'name':'get_srmfiles','parent_dag':True},
+        srmkey='targ_srmfile',
         dag=dag)
     
-    check_targstaged = PythonOperator( task_id='check_targstaged' ,
-        python_callable= force_staging, 
-        op_args=["SKSP_Prod_Target_srm_file_Juelich"],
+    check_targstaged = Check_staged( task_id='check_targstaged',
+        srmfile={'name':'get_srmfiles','parent_dag':True},
+        srmkey='targ_srmfile',
         dag=dag)
     
+    check_done_files = dcacheSensor(task_id='check_done_files',
+            poke_interval=1200,
+            token_task = 'token_targ1',
+            dag=dag)
 
     branch_if_cal_exists >> check_calstaged
     branch_if_cal_exists >> calib_done >>sandbox_targ1
@@ -245,5 +247,5 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
 
     join_targ >> sandbox_targ1 
 
-    parset_cal2 >> sandbox_targ1 >> tokens_targ1 >> parset_targ1
+    parset_cal2 >> sandbox_targ1 >> tokens_targ1 >> parset_targ1 >> check_done_files
     return dag

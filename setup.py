@@ -24,7 +24,7 @@ setup(name='AGLOW',
           ],
       install_requires=[
           'apache-airflow',
-          'grid-lrt',
+          'GRID_LRT',
           'six'
           ],
       include_package_data=True,

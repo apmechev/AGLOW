@@ -33,6 +33,7 @@ from GRID_LRT.Staging import srmlist
 from airflow.utils.AGLOW_utils import get_var_from_task_decorator
 from airflow.models import Variable
 
+from airflow.utils.AGLOW_utils import get_task_instance                                                                                                                                                                                        
 
 import xmlrpclib
 
@@ -58,6 +59,7 @@ class LOFARStagingOperator(BaseOperator):
             self,
             srmfile="",
             srms=None,
+            srmkey=None,
             stageID=None,
             output_encoding='utf-8',
             *args, **kwargs):
@@ -65,6 +67,7 @@ class LOFARStagingOperator(BaseOperator):
         super(LOFARStagingOperator, self).__init__(*args, **kwargs)
         self.srmfile = srmfile
         self.srms = srms
+        self.srmkey=srmkey
         self.output_encoding = output_encoding
         self.state=State.QUEUED
         self.pass_threshold=0.95 #At least 95% need to be staged to continue.
@@ -74,7 +77,12 @@ class LOFARStagingOperator(BaseOperator):
         """
         Executes the staging command from the list of srms requested.
         """
-        if not os.path.isfile(self.srmfile) and not hasattr(self.srms, '__iter__'):
+        if isinstance(self.srmfile,dict):
+            task_name = self.srmfile['name']
+            task_parent_dag = self.srmfile['parent_dag']
+            sbx_xcom = get_task_instance(context, task_name, task_parent_dag)
+            self.srmfile = sbx_xcom[self.srmkey]
+        elif not os.path.isfile(self.srmfile) and not hasattr(self.srms, '__iter__'):
             self.srmfile=Variable.get(self.srmfile)
             if not os.path.isfile(self.srmfile):
                 self.status=State.UPSTREAM_FAILED
