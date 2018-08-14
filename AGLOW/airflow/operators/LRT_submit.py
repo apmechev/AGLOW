@@ -58,6 +58,7 @@ class LRTSubmit(BaseOperator):
             token_task,
             NCPU=2,
             parameter_step=4,
+            queue = None,
             run_location='sara',
             output_encoding='utf-8',
             *args, **kwargs):
@@ -66,6 +67,7 @@ class LRTSubmit(BaseOperator):
         self.token_task = token_task 
         self.location = run_location
         self.parameter_step = parameter_step
+        self.queue = queue
         self.NCPU = NCPU
         self.output_encoding = output_encoding
         self.state = State.QUEUED
@@ -80,7 +82,7 @@ class LRTSubmit(BaseOperator):
         
         if self.token_id==None:
             raise RuntimeError("Could not get the token list from the "+str(self.token_task)+ " task")
-
+    
         self.initialilze_submitter(location = self.location,
                 NCPU = self.NCPU, parameter_step = self.parameter_step)
         pc=get_picas_credentials.picas_cred()
@@ -90,7 +92,7 @@ class LRTSubmit(BaseOperator):
         
         self.submitter.numjobs=int(len(token_list)) 
         if len(token_list)<1:
-            raise("Not enough todo tokens to submit!")
+            raise RuntimeError("Not enough todo tokens to submit!")
         with self.submitter as sub:
             launch_ID=sub.launch()
         return launch_ID
@@ -103,7 +105,10 @@ class LRTSubmit(BaseOperator):
     def initialilze_submitter(self,location='sara',**kwargs):
         self.submitter=None 
         if location=='sara':
-            self.submitter=submit.jdl_launcher(token_type=self.token_id,**kwargs)
+            if self.queue:
+                self.submitter=submit.jdl_launcher(token_type=self.token_id, queue=self.queue, **kwargs)
+            else:
+                self.submitter=submit.jdl_launcher(token_type=self.token_id,**kwargs)
 
 
     def get_token_list(self,context):

@@ -76,7 +76,8 @@ class LRTSandboxOperator(BaseOperator):
         SBXlocs=[]
         self.SBX.build_sandbox(self.sbx_config)        
         self.SBX.upload_sandbox()
-        return {"SBX_location":self.SBX.SBXloc}
+        self.SBX.cleanup()
+        return {"SBX_location":self.SBX.sbxloc}
 
 
     def success(self):

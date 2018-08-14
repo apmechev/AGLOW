@@ -92,7 +92,7 @@ class Storage_to_Srmlist(BaseOperator):
         srmdir=''
         for t in tokens:
             if srmdir!='': break
-            srmdir=str(th.db[t['id']][key])+str(OBSID) 
+            srmdir=str(th.database[t['id']][key])+str(OBSID) 
         return srmdir
 
     def list_dir(self,srmdir):

@@ -24,6 +24,8 @@ from airflow.utils.state import State
 from airflow.operators.sensors import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 from airflow.models import Variable
+from airflow.utils.AGLOW_utils import get_task_instance                                                               
+
 
 from GRID_LRT.Staging import state_all
 
@@ -44,6 +46,7 @@ class Check_staged(BaseOperator):
     @apply_defaults
     def __init__(self, 
             srmfile=None, 
+            srmkey=None,
             success_threshold=0.9,  
             *args, **kwargs):
         if srmfile:
@@ -51,23 +54,23 @@ class Check_staged(BaseOperator):
         else:
             raise ValueError("srmfile not defined") 
         self.threshold=success_threshold
+        self.srmkey = srmkey
         super(Check_staged, self).__init__(*args, **kwargs)
 
     def execute(self, context):
-#        srm_dir=self.determine_srm_root_dir(self.srmfile)
-#        if 'sara' in srm_dir: 
-#            logging.warning("Cannot count staged files on SURFsara, staging anyways")
-#            return {'staged':False,'srmfile':self.srmfile}
-#        staging_statuses=self.check_srm_status(srm_dir)
-        if "/" not in self.srmfile:
+        if isinstance(self.srmfile,dict):
+            task_name = self.srmfile['name']
+            task_parent_dag = self.srmfile['parent_dag']
+            sbx_xcom = get_task_instance(context, task_name, task_parent_dag)
+            self.srmfile = sbx_xcom[self.srmkey]
+        elif "/" not in self.srmfile:
             self.srmfile= Variable.get(self.srmfile)
-        staging_statuses=state_all.main(self.srmfile)
-#        if self.count_successes(staging_statuses) > self.threshold:
-#            return {'staged':True,'srmfile':self.srmfile}
-#        return {'staged':False,'srmfile':self.srmfile}
+        logging.info(self.srmfile)
+        staging_statuses=state_all.main(self.srmfile, verbose=False)
+        logging.info(staging_statuses)
         if state_all.percent_staged(staging_statuses) > self.threshold:
-            return {'staged':True,'srmfile':self.srmfile}
-        return {'staged':False,'srmfile':self.srmfile}
+            return {'staged':True,'srmfile':str(self.srmfile)}
+        return {'staged':False,'srmfile':str(self.srmfile)}
 
 
     def determine_srm_root_dir(self,srmfile):

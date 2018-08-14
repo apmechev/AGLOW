@@ -29,6 +29,8 @@ from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.file import TemporaryDirectory
 from airflow.utils.state import State
+from airflow.utils.AGLOW_utils import get_task_instance
+
 #import progressbar
 from GRID_LRT import Token
 from GRID_LRT import get_picas_credentials
@@ -98,7 +100,12 @@ class TokenCreator(BaseOperator):
         if self.pc_database:
             pc.database = self.pc_database
         if self.fields_task:
-            app = context['task_instance'].xcom_pull(task_ids=self.fields_task)['field_name']
+            task_name = self.fields_task['name']
+            task_parent_dag = self.fields_task['parent_dag']
+            try:
+                app = get_task_instance(context, task_name, task_parent_dag)['sanitized_field_name']
+            except KeyError:
+                app = get_task_instance(context, task_name, task_parent_dag)['field_name']
         else:
             app = srms.OBSID
         self.t_type= self.t_type+app
@@ -133,13 +140,19 @@ class TokenCreator(BaseOperator):
         self.tokens.add_keys_to_list("OBSID",srms.OBSID)
         
         if 'CAL_OBSID' in tok_settings.keys():
-            cal_results = context['task_instance'].xcom_pull(task_ids=self.srms_task) 
+            task_name = self.srms_task['name']
+            task_parent_dag = self.srms_task['parent_dag']
+            cal_results = get_task_instance(context, task_name, task_parent_dag)
             CAL_OBSID = cal_results['CAL_OBSID']
             self.tokens.add_keys_to_list("CAL_OBSID",CAL_OBSID)
-        
-        sbx_name = context['task_instance'].xcom_pull(task_ids=self.sbx_task)["SBX_location"]
+        logging.info(str(self.sbx_task) )
+        task_name = self.sbx_task['name']
+        task_parent_dag = self.sbx_task['parent_dag']
+        sbx_xcom = get_task_instance(context, task_name, task_parent_dag)
+        sbx_name = sbx_xcom["SBX_location"]
         self.tokens.add_keys_to_list('SBXloc',"gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/sandbox/"+sbx_name)
         results = dict()
+        results['num_jobs'] = len(d.keys())
         results['output_dir'] = tok_settings['RESULTS_DIR']+"/"+ str(srms.OBSID)
         results['token_type'] = str(self.t_type)
         results['view'] = pipe_type
@@ -157,14 +170,16 @@ class TokenCreator(BaseOperator):
             self.tokens.add_keys_to_list(k,field_dict[k])
 
     def get_staged_srms(self,context):
-        ti = context['task_instance']
-        srm_xcom = ti.xcom_pull(task_ids=self.staging_task)['srmfile']
-        logging.info("Srmfile is "+srm_xcom)
-        if srm_xcom==None:
+        task_name = self.staging_task['name']
+        task_parent_dag = self.staging_task['parent_dag']
+        srm_xcom = get_task_instance(context, task_name, task_parent_dag)
+        srmfile = srm_xcom['srmfile']
+        logging.info("Srmfile is "+srmfile)
+        if srmfile == None:
             raise RuntimeError("Could not get the srm list from the "+str(self.staging_task) +" task")
         self.srmlist = srmlist()
-        for link in open(srm_xcom,'rb').readlines():
-            self.srmlist.append(link)
+        for link in open(srmfile,'rb').readlines():
+            self.srmlist.append(link.strip('\n'))
         return self.srmlist
 
     def success(self):
@@ -203,6 +218,7 @@ class TokenUploader(BaseOperator):
             upload_file=None, 
             parset_task=None,
             pc_database=None,
+            parent_dag=False,
             output_encoding='utf-8',
             *args, **kwargs):
         
@@ -212,6 +228,7 @@ class TokenUploader(BaseOperator):
         self.parset_task = parset_task
         self.output_encoding = output_encoding
         self.upload_file = upload_file
+        self.parent_dag = parent_dag
         self.state = State.QUEUED
 
     def execute(self, context):
@@ -239,7 +256,7 @@ class TokenUploader(BaseOperator):
         """
         if not self.parset_task and os.path.exists(self.upload_file): 
             return self.upload_file # no parset_task, just get file parameter
-        parset_xcom = context['task_instance'].xcom_pull(task_ids=self.parset_task)
+        parset_xcom = get_task_instance(context, self.parset_task, self.parent_dag)
         parset_filename=self.upload_file.split('/')[-1]
         parset_file_loc = parset_xcom[parset_filename] 
         if os.path.exists(parset_file_loc): 
