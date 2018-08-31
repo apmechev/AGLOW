@@ -18,6 +18,7 @@ This software combines `Apache Ariflow <https://airflow.apache.org/>`_.. and the
    installing
    utils
    sensors
+   operators
 
 Indices and tables
 ==================
