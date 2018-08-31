@@ -29,7 +29,7 @@ from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
 from airflow.utils.file import TemporaryDirectory
 from airflow.utils.state import State
-from airflow.utils.AGLOW_utils import get_task_instance
+from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
 
 #import progressbar
 from GRID_LRT import Token
