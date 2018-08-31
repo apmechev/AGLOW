@@ -1,49 +1,48 @@
 import os
+import subprocess
+import fileinput
+import logging
+from datetime import datetime, timedelta
+
+
 from airflow import DAG
 from airflow.operators.bash_operator import BashOperator
-from airflow.contrib.operators.LTA_staging import LOFARStagingOperator
-from airflow.contrib.operators.LRT_Sandbox import LRTSandboxOperator
-from airflow.contrib.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
-from airflow.contrib.operators.LRT_submit import LRTSubmit 
-from airflow.contrib.operators.data_staged import Check_staged
-from airflow.contrib.sensors.glite_wms_sensor import gliteSensor
-from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.dummy_operator import DummyOperator
-from airflow.contrib.operators.LRT_storage_to_srm import Storage_to_Srmlist 
 from airflow.models import Variable
 
+#Import AGLOW operators
+from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
+from AGLOW.airflow.operators.LRT_Sandbox import LRTSandboxOperator
+from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
+from AGLOW.airflow.operators.LRT_submit import LRTSubmit 
+from AGLOW.airflow.operators.data_staged import Check_staged
+from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist 
+from AGLOW.airflow.sensors.glite_wms_sensor import gliteSensor
+
 #Import helper fucntions 
-from airflow.utils.AGLOW_utils import get_next_field
-from airflow.utils.AGLOW_utils import count_files_uberftp 
-from airflow.utils.AGLOW_utils import count_grid_files
-from airflow.utils.AGLOW_utils import stage_if_needed
-from airflow.utils.AGLOW_utils import get_next_field
-from airflow.utils.AGLOW_utils import set_field_status_from_taskid
-from airflow.utils.AGLOW_utils import get_srmfile_from_dir
-from airflow.utils.AGLOW_utils import count_from_task
-from airflow.utils.AGLOW_utils import get_field_location_from_srmlist
-from airflow.utils.AGLOW_utils import set_field_status_from_task_return
-from airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
-from airflow.utils.AGLOW_utils import check_folder_for_files_from_task 
-#from airflow.utils.AGLOW_utils import archive_tokens_from_task
+from AGLOW.airflow.utils.AGLOW_utils import get_next_field
+from AGLOW.airflow.utils.AGLOW_utils import count_files_uberftp 
+from AGLOW.airflow.utils.AGLOW_utils import count_grid_files
+from AGLOW.airflow.utils.AGLOW_utils import stage_if_needed
+from AGLOW.airflow.utils.AGLOW_utils import get_next_field
+from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_taskid
+from AGLOW.airflow.utils.AGLOW_utils import get_srmfile_from_dir
+from AGLOW.airflow.utils.AGLOW_utils import count_from_task
+from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
+from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
+from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
+from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task 
+
+#Import GRID_LRT helpers
 from GRID_LRT.Staging import state_all
-
-
 from GRID_LRT.Staging.srmlist import srmlist
 from GRID_LRT import Token
 from GRID_LRT.get_picas_credentials import picas_cred
-import subprocess
-import  fileinput
-import logging
-import pdb
 
-def test_check_staged(srm_variable, **context):
-    srmfile = Variable.get(srm_variable)
-    logging.info(state_all.__file__)
-#    file_statuses = state_all.main(srmfile, verbose=False)
-    return {'staged':False,'srmfile':str(srmfile)}
+
+
 
 #TODO: This fails!
 
