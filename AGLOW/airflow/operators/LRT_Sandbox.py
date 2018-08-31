@@ -38,8 +38,7 @@ class LRTSandboxOperator(BaseOperator):
     """
     Operator that uploads a LOFAR 'sandbox' to GRID storage
 
-    :param sbx_config: path to the configuration file the describes how to 
-    build the sandbox.
+    :param sbx_config: path to the configuration file the describes how to build the sandbox.
     :type sbx_config: str
     :param tok_config: path to the configuration file for the tokens. Optional
     :type tok_config: str
@@ -68,7 +67,7 @@ class LRTSandboxOperator(BaseOperator):
         Launches the task. Leverages the sandbox class to build
         a sandbox using a configuration file. Sandbox is uploaded to 
         the respective storage. Xcom returned is the location of the
-        Sandbox
+        Sandbox. The sandbox is cleaned up locally.
         """
         SBXlocs=[]
         self.SBX.build_sandbox(self.sbx_config)        
@@ -81,6 +80,7 @@ class LRTSandboxOperator(BaseOperator):
         return self.SBX.SBXloc
 
     def on_kill(self):
+        """Cleans up the sandbox before killing process"""
         logging.warn('Sending SIGTERM signal to staging group')
         self.state=State.SHUTDOWN
         self.SBX.cleanup()
