@@ -38,13 +38,11 @@ class LRTSandboxOperator(BaseOperator):
     """
     Operator that uploads a LOFAR 'sandbox' to GRID storage
 
-    :param srmfile: the name of the file holding a list of srm files to stage
-    :type srmfile: string
-    :param srms: a list of the srms that need to be staged
-    :type srms: list
-    :param stageID: In case staging was already done
-    :type stageID: string
-    :type output_encoding: output encoding of bash command
+    :param sbx_config: path to the configuration file the describes how to 
+    build the sandbox.
+    :type sbx_config: str
+    :param tok_config: path to the configuration file for the tokens. Optional
+    :type tok_config: str
     """
     template_fields = ()
     template_ext = ()
@@ -64,7 +62,6 @@ class LRTSandboxOperator(BaseOperator):
         self.SBX=Sandbox.Sandbox(cfgfile=sbx_config)
         self.output_encoding = output_encoding
         self.state=State.QUEUED
-#        self.p_bar=progressbar.ProgressBar()
 
     def execute(self, context):
         """
@@ -80,15 +77,11 @@ class LRTSandboxOperator(BaseOperator):
         return {"SBX_location":self.SBX.sbxloc}
 
 
-    def success(self):
-        self.status=State.SUCCESS
-        logging.info("Successfully staged " +
-                    str(self.progress['Percent done']) + " % of the files.")
-
     def get_SBXloc(self):
         return self.SBX.SBXloc
 
     def on_kill(self):
         logging.warn('Sending SIGTERM signal to staging group')
         self.state=State.SHUTDOWN
+        self.SBX.cleanup()
         os.killpg(os.getpgid(self.sp.pid), signal.SIGTERM)
