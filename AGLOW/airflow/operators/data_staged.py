@@ -24,7 +24,7 @@ from airflow.utils.state import State
 from airflow.operators.sensors import BaseSensorOperator
 from airflow.utils.decorators import apply_defaults
 from airflow.models import Variable
-from airflow.utils.AGLOW_utils import get_task_instance                                                               
+from AGLOW.airflow.utils.AGLOW_utils import get_task_instance                                                               
 
 
 from GRID_LRT.Staging import state_all
