@@ -33,7 +33,7 @@ from GRID_LRT.Staging import srmlist
 from airflow.utils.AGLOW_utils import get_var_from_task_decorator
 from airflow.models import Variable
 
-from airflow.utils.AGLOW_utils import get_task_instance
+from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
 
 import xmlrpclib
 
