@@ -19,6 +19,8 @@ This software combines `Apache Ariflow <https://airflow.apache.org/>`_.. and the
    utils
    sensors
    operators
+   subdags
+
 
 Indices and tables
 ==================
