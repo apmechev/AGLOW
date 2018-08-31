@@ -30,7 +30,7 @@ from airflow.utils.file import TemporaryDirectory
 from airflow.utils.state import State
 from GRID_LRT.Staging import stager_access, stage_all_LTA
 from GRID_LRT.Staging import srmlist
-from airflow.utils.AGLOW_utils import get_var_from_task_decorator
+from AGLOW.airflow.utils.AGLOW_utils import get_var_from_task_decorator
 from airflow.models import Variable
 
 from AGLOW.airflow.utils.AGLOW_utils import get_task_instance

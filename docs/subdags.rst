@@ -10,7 +10,7 @@ SKSP_Calibrator
 The calibrator workflow for the SKSP data processing pipeline. 
 
 
-.. autoclass:: AGLOW.airflow.subdags.SKSP_calibrator
+.. automodule:: AGLOW.airflow.subdags.SKSP_calibrator
     :members: 
     :undoc-members:
 
