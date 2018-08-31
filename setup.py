@@ -23,7 +23,7 @@ setup(name='AGLOW',
           'pytest', 
           ],
       install_requires=[
-          'tzlocal',   
+          'tzlocal==1.5.1',   
           'apache-airflow',
           'GRID_LRT',
           'six'
