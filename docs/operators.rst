@@ -9,7 +9,7 @@ LRT_Sandbox
 This operator builds and uploads a sandbox, given a sandbox definition file. As an input, it takes a configuration file and returns the sandbox location in a dictionary with a key "SBX_location".
 
 
-.. autoclass:: AGLOW.airflow.operators.LRT_Sandbox
+.. autoclass:: AGLOW.airflow.operators.LRT_Sandbox.LRTSandboxOperator
     :members: 
     :undoc-members:
 

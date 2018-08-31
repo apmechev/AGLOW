@@ -12,4 +12,7 @@ The purpose of the gliteSensor is to monitor a job submitted with glite-wms-job-
 .. autoclass:: AGLOW.airflow.sensors.glite_wms_sensor.gliteSensor
     :members: 
     :undoc-members:
+    :inherited-members:
+    :show-inheritance:
+
 
