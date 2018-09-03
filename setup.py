@@ -15,7 +15,7 @@ class PostInstallCommand(install):
 
 
 setup(name='AGLOW',
-      packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils', 'AGLOW/airflow/subdags'],
+      packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils', 'AGLOW/airflow/subdags', 'AGLOW/airflow/postgres'],
       version=__version__,
       setup_requires=[
           ],
