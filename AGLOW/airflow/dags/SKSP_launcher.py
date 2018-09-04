@@ -84,8 +84,6 @@ args_dict_juelich = {
                 'pref_targ1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_targ1.cfg'}
 
 #Resetting variables (They are set by get_srmfiles)
-Variable.get("SKSP_Prod_Calibrator_srm_file","")
-Variable.get("SKSP_Prod_Target_srm_file","")
 
 orig_parsets = { 
         "Pre-Facet-Calibrator-1.parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-1.parset", 
