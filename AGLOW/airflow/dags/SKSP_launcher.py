@@ -67,7 +67,7 @@ dag = DAG('SKSP_Launcher', default_args=default_args, schedule_interval='0 */24 
 data_directory = "/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/"
 
 if not os.path.isdir(data_directory):
-    data_directory = GRID_LRT.__file__.split(['_init__.py'])[0]+"/data/"
+    data_directory = GRID_LRT.__file__.split('__init__.py')[0]+"/data/"
 
 args_dict = { 
             "cal1_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-1.parset",
