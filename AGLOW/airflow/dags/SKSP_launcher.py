@@ -41,6 +41,8 @@ from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
 from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task 
 
+import GRID_LRT
+
 
 default_args = {
     'owner': 'apmechev',
