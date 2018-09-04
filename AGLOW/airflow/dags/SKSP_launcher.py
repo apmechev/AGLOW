@@ -62,34 +62,38 @@ default_args = {
 
 dag = DAG('SKSP_Launcher', default_args=default_args, schedule_interval='0 */24 * * *' , catchup=False)
 
+data_directory = "/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/"
+
+if not os.path.isdir(data_directory):
+    data_directory = GRID_LRT.__file__.split(['_init__.py'])[0]+"/data/"
 
 args_dict = { 
-            "cal1_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-1.parset",
-            "cal2_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset",
-            'pref_cal1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_cal1.cfg',
-            'pref_cal2_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_cal2.cfg',
-            "targ1_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Target-1.parset",
-            "targ2_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Target-2.parset",
-            'pref_targ1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_targ1.cfg',
-            'pref_targ2_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_targ2.cfg'
+            "cal1_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-1.parset",
+            "cal2_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-2.parset",
+            'pref_cal1_cfg' : data_directory+"config/steps/pref_cal1.cfg",
+            'pref_cal2_cfg' : data_directory+"config/steps/pref_cal2.cfg",
+            "targ1_parset"  : data_directory+"parsets/Pre-Facet-Target-1.parset",
+            "targ2_parset"  : data_directory+"parsets/Pre-Facet-Target-2.parset",
+            'pref_targ1_cfg': data_directory+"config/steps/pref_targ1.cfg",
+            'pref_targ2_cfg': data_directory+"config/steps/pref_targ2.cfg"
             }
 
 
 args_dict_juelich = {
-                "cal1_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-1.parset",
-                "cal2_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset",
-                "targ1_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Target-1.parset",
-                'pref_cal1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_cal1_juelich.cfg',
-                'pref_cal2_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_cal2.cfg',
-                'pref_targ1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_targ1.cfg'}
+                "cal1_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-1.parset",
+                "cal2_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-2.parset",
+                "targ1_parset"  : data_directory+"parsets/Pre-Facet-Target-1.parset",
+                'pref_cal1_cfg' : data_directory+"config/steps/pref_cal1_juelich.cfg",
+                'pref_cal2_cfg' : data_directory+"config/steps/pref_cal2.cfg",
+                'pref_targ1_cfg': data_directory+"config/steps/pref_targ1.cfg"}
 
 #Resetting variables (They are set by get_srmfiles)
 
 orig_parsets = { 
-        "Pre-Facet-Calibrator-1.parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-1.parset", 
-        "Pre-Facet-Calibrator-2.parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset",
-        "Pre-Facet-Target-1.parset" : '/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Target-1.parset',
-        "Pre-Facet-Target-2.parset" : '/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Target-2_fields.parset'
+        "Pre-Facet-Calibrator-1.parset":data_directory+"parsets/Pre-Facet-Calibrator-1.parset", 
+        "Pre-Facet-Calibrator-2.parset":data_directory+"parsets/Pre-Facet-Calibrator-2.parset",
+        "Pre-Facet-Target-1.parset" : data_directory+'parsets/Pre-Facet-Target-1.parset',
+        "Pre-Facet-Target-2.parset" : data_directory+'parsets/Pre-Facet-Target-2_fields.parset'
         }
 time_avg = 8
 freq_avg = 2
