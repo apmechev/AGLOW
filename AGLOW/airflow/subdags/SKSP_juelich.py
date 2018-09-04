@@ -58,8 +58,6 @@ def force_staging(srmfile1, **args):
 
 def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     field_name = 'fields_'
-    Variable.get("SKSP_Prod_Calibrator_srm_file_Juelich","")
-    Variable.get("SKSP_Prod_Target_srm_file_Juelich","")
 
     dag = DAG(dag_id=parent_dag_name+'.'+subdagname, default_args=dag_args, schedule_interval='@once' , catchup=True)
 
