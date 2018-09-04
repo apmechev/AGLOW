@@ -13,6 +13,9 @@ class PostInstallCommand(install):
         dirs =  get_airflow_directories()
         install.run(self)
 
+class PreInstallCommand(install):
+    os.environ['AIRFLOW_GPL_UNIDECODE']='yes'
+
 
 setup(name='AGLOW',
       packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils', 'AGLOW/airflow/subdags', 'AGLOW/airflow/postgres'],
