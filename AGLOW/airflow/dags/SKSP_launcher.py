@@ -16,9 +16,7 @@ from airflow.operators.subdag_operator import SubDagOperator
 from airflow.operators.dummy_operator import DummyOperator
 
 from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
-from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
 from AGLOW.airflow.operators.data_staged import Check_staged
-from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist
 
 from AGLOW.airflow.subdags.SKSP_calibrator import calibrator_subdag
 from AGLOW.airflow.subdags.SKSP_target import target_subdag
