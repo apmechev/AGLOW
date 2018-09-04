@@ -58,9 +58,13 @@ class LRTSandboxOperator(BaseOperator):
         super(LRTSandboxOperator, self).__init__(*args, **kwargs)
         self.sbx_config = sbx_config
         self.tok_config = tok_config  
-        self.SBX=Sandbox.Sandbox(cfgfile=sbx_config)
         self.output_encoding = output_encoding
         self.state=State.QUEUED
+
+    def build_sandbox(self):
+        """Do not build Sandbox on initialization but on execution"""
+        self.SBX=Sandbox.Sandbox(cfgfile=self.sbx_config)
+
 
     def execute(self, context):
         """
@@ -69,6 +73,7 @@ class LRTSandboxOperator(BaseOperator):
         the respective storage. Xcom returned is the location of the
         Sandbox. The sandbox is cleaned up locally.
         """
+        self.build_sandbox()
         SBXlocs=[]
         self.SBX.build_sandbox(self.sbx_config)        
         self.SBX.upload_sandbox()
