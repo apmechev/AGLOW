@@ -1,8 +1,6 @@
-from airflow import DAG                                                                                                                     
-from airflow.contrib.operators.LTA_staging import LOFARStagingOperator
-
-
-from airflow.contrib.operators.data_staged import Check_staged                                                                              
+from airflow import DAG                                                                                                     
+from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
+from AGLOW.airflow.operators.data_staged import Check_staged                                                                              
 
 
 
