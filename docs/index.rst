@@ -20,7 +20,7 @@ This software combines `Apache Ariflow <https://airflow.apache.org/>`_.. and the
    sensors
    operators
    subdags
-
+   dags
 
 Indices and tables
 ==================
