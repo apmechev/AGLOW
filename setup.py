@@ -23,6 +23,7 @@ setup(name='AGLOW',
           'pytest', 
           ],
       install_requires=[
+          'sshtunnel',
           'snakebite',
           'tzlocal==1.5.1',   
           'apache-airflow',
