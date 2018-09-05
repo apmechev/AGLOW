@@ -265,6 +265,6 @@ if __name__=='__main__':
     result=sdb.get_field('P35Hetdex10')
     #result['location']='Never Never Land'
     #sdb.set_id(result)
-    print result
+    print(result)
     sdb.close()
 
