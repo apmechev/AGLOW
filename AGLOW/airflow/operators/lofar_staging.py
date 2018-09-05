@@ -21,7 +21,7 @@ from time import sleep
 import logging
 from subprocess import Popen, STDOUT, PIPE
 from tempfile import gettempdir, NamedTemporaryFile
-from xmlrpclib import ResponseError
+
 
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
@@ -33,8 +33,15 @@ from GRID_LRT.Staging import srmlist
 from AGLOW.airflow.utils.AGLOW_utils import get_var_from_task_decorator
 from airflow.models import Variable
 
+try:
+    import xmlrpclib
+    from xmlrpclib import ResponseError
+    from xmlrpclib import Fault as xmlrpcFault
+except ImportError:
+    import xmlrpc as xmlrpclib
+    from xmlrpc.client import ResponseError
+    from xmlrpc.client import Fault as xmlrpcFault
 
-import xmlrpclib
 
 class LOFARStagingOperator(BaseOperator):
     """
@@ -85,7 +92,7 @@ class LOFARStagingOperator(BaseOperator):
         self.surl_list=self.build_srm_list(surl_list)
         try:
             self.stage_ID=stager_access.stage(list(self.surl_list))
-        except xmlrpclib.Fault : 
+        except xmlrpcFault : 
             sleep(60)
             self.stage_ID=stager_access.stage(list(self.surl_list))
         logging.info("Successfully sent staging command for " + 

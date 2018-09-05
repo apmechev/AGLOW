@@ -21,7 +21,6 @@ from time import sleep
 import logging
 from subprocess import Popen, STDOUT, PIPE
 from tempfile import gettempdir, NamedTemporaryFile
-from xmlrpclib import ResponseError
 
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
@@ -35,7 +34,13 @@ from airflow.models import Variable
 
 from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
 
-import xmlrpclib
+try:
+    import xmlrpclib
+    from xmlrpclib import ResponseError
+except ImportError:
+    import xmlrpc as xmlrpclib
+    from xmlrpc.client import ResponseError
+
 
 class LOFARStagingOperator(BaseOperator):
     """
