@@ -26,6 +26,7 @@ setup(name='AGLOW',
           'pytest', 
           ],
       install_requires=[
+          'xmlrpclib',
           'sshtunnel',
           'snakebite',
           'tzlocal==1.5.1',   
