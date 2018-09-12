@@ -35,8 +35,8 @@ setup(name='AGLOW',
           'six'
           ],
       include_package_data=True,
-      data_files = [ 
-          ],
+      data_files=[("logo",["AGLOW/AGLOW_logo.png"])
+                 ],
       description='AGLOW: Automated Grid-enabled LOFAR Workflows',
       long_description="Distributing, Automating and Accelerating LOFAR data processing using an industry standard workflow orchestration software on a High Throughput cluster at the Dutch Grid location.",
       author='Alexandar Mechev',
