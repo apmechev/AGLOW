@@ -1,0 +1,16 @@
+1475a1476,1488
+>         SKSP_field = "Unknown"
+>         if 'get_next_field' in dag.task_ids:
+>             SKSP_field_Xcoms = session.query(XCom).filter(
+>                     XCom.dag_id == dag_id, XCom.task_id == 'get_next_field',
+>                     XCom.execution_date == dttm).all()
+>             if len(SKSP_field_Xcoms) > 0:
+>                 xcom_value = SKSP_field_Xcoms[-1].value
+> #                SKSP_field = xcom_value
+> #                xcom_value = eval(xcom_value)
+>                 if 'field_name' in xcom_value.keys():
+>                     SKSP_field = xcom_value['field_name']
+>         else: 
+>             SKSP_field = "Unknowr"
+1482a1496
+>             SKSP_field=SKSP_field,

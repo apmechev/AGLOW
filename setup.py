@@ -6,6 +6,8 @@ from setuptools.command.install import install
 from AGLOW.version import __version__
 import os
 
+PATCH_LOC=AGLOW.__file__.split('__init__')[0]+'patches'
+
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
     def run(self):
@@ -35,7 +37,8 @@ setup(name='AGLOW',
           'six'
           ],
       include_package_data=True,
-      data_files=[("logo",["AGLOW/AGLOW_logo.png"])
+      data_files=[("logo",["AGLOW/AGLOW_logo.png"]),
+                  ("parches",[PATCH_LOC + i for i in os.listdir(PATCH_LOC)])
                  ],
       description='AGLOW: Automated Grid-enabled LOFAR Workflows',
       long_description="Distributing, Automating and Accelerating LOFAR data processing using an industry standard workflow orchestration software on a High Throughput cluster at the Dutch Grid location.",
