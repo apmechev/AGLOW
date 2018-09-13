@@ -4,6 +4,7 @@
 from setuptools import setup
 from setuptools.command.install import install
 from AGLOW.version import __version__
+import AGLOW
 import os
 
 PATCH_LOC=AGLOW.__file__.split('__init__')[0]+'patches'
