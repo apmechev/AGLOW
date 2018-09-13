@@ -20,6 +20,15 @@ class PostInstallCommand(install):
 class PreInstallCommand(install):
     os.environ['AIRFLOW_GPL_UNIDECODE']='yes'
 
+def apply_patch(orig_file):
+    import airflow
+    a_loc=AGLOW.__file__.split('__init__')[0]
+    orig_file_stripped = orig_file.split('/')[-1]
+    patchdag = subprocess.Popen(['patch',orig_file,a_loc+'/patches/'+orig_file_stripped+'_v'+airflow.__version__]
+            ,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    o=patchdag.communicate()
+    print(o)
+
 
 setup(name='AGLOW',
       packages=['AGLOW','AGLOW/airflow','AGLOW/airflow/dags','AGLOW/airflow/operators','AGLOW/airflow/sensors','AGLOW/airflow/utils', 'AGLOW/airflow/subdags', 'AGLOW/airflow/postgres'],
