@@ -7,7 +7,7 @@ from AGLOW.version import __version__
 import AGLOW
 import os
 
-PATCH_LOC=AGLOW.__file__.split('__init__')[0]+'patches'
+PATCH_LOC='AGLOW/patches'
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
