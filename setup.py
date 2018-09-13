@@ -8,7 +8,7 @@ import AGLOW
 import os
 
 
-PATCH_LOC='AGLOW/patches'
+PATCH_LOC='AGLOW/patches/'
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
@@ -49,7 +49,7 @@ setup(name='AGLOW',
           ],
       include_package_data=True,
       data_files=[("logo",["AGLOW/AGLOW_logo.png"]),
-                  ("parches",[PATCH_LOC + i for i in os.listdir(PATCH_LOC)])
+                  ("AGLWO/patches",[PATCH_LOC + i for i in os.listdir(PATCH_LOC)])
                  ],
       description='AGLOW: Automated Grid-enabled LOFAR Workflows',
       long_description="Distributing, Automating and Accelerating LOFAR data processing using an industry standard workflow orchestration software on a High Throughput cluster at the Dutch Grid location.",
