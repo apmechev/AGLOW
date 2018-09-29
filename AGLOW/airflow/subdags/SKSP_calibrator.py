@@ -32,8 +32,8 @@ from GRID_LRT.Staging import state_all
 
 
 from GRID_LRT.Staging.srmlist import srmlist
-from GRID_LRT import Token
-from GRID_LRT.get_picas_credentials import picas_cred
+from GRID_LRT import token
+from GRID_LRT.auth.get_picas_credentials import picas_cred
 import subprocess
 import  fileinput
 import logging
@@ -58,7 +58,7 @@ def archive_tokens_from_task(token_task, delete=False, **context):
 
 def archive_all_tokens(token_type, archive_location, delete=False):
     pc = picas_cred()
-    th = Token.Token_Handler(t_type=token_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
+    th = token.TokenHandler(t_type=token_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
     token_archive = th.archive_tokens(delete_on_save=delete, compress=True)
     logging.info("Archived tokens from " + token_type + " and made an archive: " + token_archive)
     logging.info(token_archive + " size is " + str(os.stat(token_archive).st_size))

@@ -15,8 +15,8 @@ import subprocess
 import pdb
 from tempfile import gettempdir, NamedTemporaryFile
 
-from GRID_LRT import Token
-from GRID_LRT import get_picas_credentials
+from GRID_LRT import token
+from GRID_LRT.auth import get_picas_credentials
 
 import airflow
 from airflow import hooks, settings
@@ -87,7 +87,7 @@ class Storage_to_Srmlist(BaseOperator):
         view=token_task_view['view']
         key='RESULTS_DIR'
         pc=get_picas_credentials.picas_cred()
-        th=Token.Token_Handler(t_type=t_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
+        th=token.TokenHandler(t_type=t_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
         tokens=th.list_tokens_from_view(view)
         srmdir=''
         for t in tokens:

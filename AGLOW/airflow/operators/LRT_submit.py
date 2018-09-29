@@ -30,9 +30,9 @@ from airflow.utils.file import TemporaryDirectory
 from airflow.utils.state import State
 #import progressbar #TODO: Either add progressbar to install or ignore this
 #logging.info(progressbar.__file__)
-import GRID_LRT.Application.submit as submit
-import GRID_LRT.Token as Token
-from GRID_LRT import get_picas_credentials
+import GRID_LRT.application.submit as submit
+import GRID_LRT.token 
+from GRID_LRT.auth import get_picas_credentials
 import pdb
 
 class LRTSubmit(BaseOperator):
@@ -86,7 +86,7 @@ class LRTSubmit(BaseOperator):
         self.initialilze_submitter(location = self.location,
                 NCPU = self.NCPU, parameter_step = self.parameter_step)
         pc=get_picas_credentials.picas_cred()
-        th=Token.Token_Handler(t_type=self.token_id,
+        th=token.TokenHandler(t_type=self.token_id,
                     uname=pc.user,pwd=pc.password,dbn=pc.database)
         token_list=th.list_tokens_from_view('todo')
         

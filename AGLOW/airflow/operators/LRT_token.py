@@ -32,8 +32,8 @@ from airflow.utils.state import State
 from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
 
 #import progressbar
-from GRID_LRT import Token
-from GRID_LRT import get_picas_credentials
+from GRID_LRT import token
+from GRID_LRT.auth import get_picas_credentials
 from GRID_LRT.Staging.srmlist import srmlist
 from GRID_LRT.Staging.srmlist import slice_dicts
 import yaml
@@ -111,7 +111,7 @@ class TokenCreator(BaseOperator):
         self.t_type= self.t_type+app
         tok_settings = yaml.load(open(self.tok_config,'rb'))['Token']
         pipe_type = tok_settings['PIPELINE_STEP']
-        th = Token.Token_Handler(t_type=self.t_type,
+        th = token.TokenHandler(t_type=self.t_type,
                     uname=pc.user,pwd=pc.password,dbn=pc.database)
         th.add_overview_view()
         th.add_status_views()
@@ -123,7 +123,7 @@ class TokenCreator(BaseOperator):
         for i in tok_settings.items():
             logging.info(str(i))
 
-        self.tokens = Token.TokenSet(th=th,tok_config=self.tok_config)
+        self.tokens = token.TokenSet(th=th,tok_config=self.tok_config)
         self.upload_tokens(self.tokens)
         logging.debug(srms)
         if self.files_per_token != 1:
@@ -267,7 +267,7 @@ class TokenUploader(BaseOperator):
         pc=get_picas_credentials.picas_cred()
         if self.pc_database:                                                                                                                                                                                                                                                              
             pc.database = self.pc_database
-        th=Token.Token_Handler(t_type=token_id,
+        th=token.TokenHandler(t_type=token_id,
                     uname=pc.user,pwd=pc.password,dbn=pc.database)
         self.tokens=th.list_tokens_from_view(view)
         for token in self.tokens:
@@ -330,7 +330,7 @@ class ModifyTokenStatus(BaseOperator):
             pc.database = self.pc_database
         tok_dict=context['task_instance'].xcom_pull(task_ids=self.token_task)
         token_id=tok_dict['token_type']
-        th=Token.Token_Handler(t_type=token_id,
+        th=token.TokenHandler(t_type=token_id,
                     uname=pc.user,pwd=pc.password,dbn=pc.database)        
         for operation, view in self.modification.iteritems():
             if operation=='reset':
@@ -393,9 +393,9 @@ class ModifyTokenField(BaseOperator):
         tok_dict=context['task_instance'].xcom_pull(task_ids=self.token_task)
         token_id=tok_dict['token_type']
         pc=get_picas_credentials.picas_cred()
-        th=Token.Token_Handler(t_type=token_id,
+        th=token.TokenHandler(t_type=token_id,
                     uname=pc.user,pwd=pc.password,dbn=pc.database)
-        ts=Token.Tokenset(th)
+        ts=token.Tokenset(th)
         ts.add_keys_to_list(key=keyval[0],val=keyval[1])
 
     def success(self):
@@ -447,7 +447,7 @@ class SrmlistFromTokenView(BaseOperator):
         token_id=tok_dict['token_type']
         token_view=tok_dict['view'] #TODO: Decide if use view here or in initializer
         pc=get_picas_credentials.picas_cred()
-        th=Token.Token_Handler(t_type=token_id,
+        th=token.TokenHandler(t_type=token_id,
                 uname=pc.user,pwd=pc.password,dbn=pc.database)
         for t in th.list_tokens_from_view(token_view):
             tokens.append(t)
@@ -493,7 +493,7 @@ class TokenArchiver(BaseOperator):
         token_type = tok_dict['token_type']              
         self.OBSID = tok_dict['OBSID']
         pc=get_picas_credentials.picas_cred()
-        self.th=Token.Token_Handler(t_type=token_type,
+        self.th=token.TokenHandler(t_type=token_type,
             uname=pc.user,pwd=pc.password,dbn=pc.database)
         archive_file=self.archive_tokens()
         self.upload_archive_to_storage(archive_file)
