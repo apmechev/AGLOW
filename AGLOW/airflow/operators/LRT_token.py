@@ -107,7 +107,7 @@ class TokenCreator(BaseOperator):
             except KeyError:
                 app = get_task_instance(context, task_name, task_parent_dag)['field_name']
         else:
-            app = srms.OBSID
+            app = srms.obsid
         self.t_type= self.t_type+app
         tok_settings = yaml.load(open(self.tok_config,'rb'))['Token']
         pipe_type = tok_settings['PIPELINE_STEP']
@@ -137,7 +137,7 @@ class TokenCreator(BaseOperator):
         self.tokens.create_dict_tokens(iterable=d,
                 id_append=pipe_type,key_name='STARTSB',
                 file_upload='srm.txt')
-        self.tokens.add_keys_to_list("OBSID",srms.OBSID)
+        self.tokens.add_keys_to_list("OBSID",srms.obsid)
         
         if 'CAL_OBSID' in tok_settings.keys():
             task_name = self.srms_task['name']
@@ -153,10 +153,10 @@ class TokenCreator(BaseOperator):
         self.tokens.add_keys_to_list('SBXloc',"gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/sandbox/"+sbx_name)
         results = dict()
         results['num_jobs'] = len(d.keys())
-        results['output_dir'] = tok_settings['RESULTS_DIR']+"/"+ str(srms.OBSID)
+        results['output_dir'] = tok_settings['RESULTS_DIR']+"/"+ str(srms.obsid)
         results['token_type'] = str(self.t_type)
         results['view'] = pipe_type
-        results['OBSID'] = srms.OBSID
+        results['OBSID'] = srms.obsid
         return results
 
     def upload_tokens(self,tokens):
