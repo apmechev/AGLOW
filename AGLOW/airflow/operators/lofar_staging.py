@@ -133,7 +133,7 @@ class LOFARStagingOperator(BaseOperator):
             surl_list.append(srm)
         logging.debug(str(len(surl_list)) + " files up for staging. First srm is " +
                                 surl_list[0] + " and last one is " + surl_list[-1])
-        logging.debug("The OBSID is "+surl_list.OBSID)
+        logging.debug("The OBSID is "+surl_list.obsid)
         return surl_list
 
 
@@ -197,7 +197,7 @@ class LOFARStagingOperator(BaseOperator):
         """
         Will return the OBSID as recorded by the srmlist class
         """
-        return self.surl_list.OBSID
+        return self.surl_list.obsid
 
     def on_kill(self):
         logging.warn('Sending SIGTERM signal to staging group')
