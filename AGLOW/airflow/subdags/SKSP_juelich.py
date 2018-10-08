@@ -1,11 +1,11 @@
 from airflow import DAG                                                                                                                     
 from airflow.operators.bash_operator import BashOperator
-from AGLOW.airflow.contrib.operators.LTA_staging import LOFARStagingOperator
-from AGLOW.airflow.contrib.operators.LRT_Sandbox import LRTSandboxOperator
-from AGLOW.airflow.contrib.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
-from AGLOW.airflow.contrib.operators.LRT_submit import LRTSubmit
-from AGLOW.airflow.contrib.operators.data_staged import Check_staged
-from AGLOW.airflow.contrib.sensors.dcache_sensor import dcacheSensor
+from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
+from AGLOW.airflow.operators.LRT_Sandbox import LRTSandboxOperator
+from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
+from AGLOW.airflow.operators.LRT_submit import LRTSubmit
+from AGLOW.airflow.operators.data_staged import Check_staged
+from AGLOW.airflow.sensors.dcache_sensor import dcacheSensor
 
 from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
