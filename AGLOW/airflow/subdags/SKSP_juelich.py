@@ -5,13 +5,14 @@ from AGLOW.airflow.operators.LRT_Sandbox import LRTSandboxOperator
 from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
 from AGLOW.airflow.operators.LRT_submit import LRTSubmit
 from AGLOW.airflow.operators.data_staged import Check_staged
+from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist                                                                                                      
 from AGLOW.airflow.sensors.dcache_sensor import dcacheSensor
+
 
 from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.dummy_operator import DummyOperator
-from airflow.contrib.operators.LRT_storage_to_srm import Storage_to_Srmlist
 from airflow.models import Variable
 
 #Import helper fucntions 
