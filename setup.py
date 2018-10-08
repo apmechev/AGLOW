@@ -27,6 +27,7 @@ def apply_patch(orig_file):
     patchdag = subprocess.Popen(['patch',orig_file,a_loc+'/patches/patch_'+orig_file_stripped+'_v'+airflow.__version__]
             ,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     o=patchdag.communicate()
+    print("Patching file "+orig_file)
     print(o)
 
 
@@ -43,6 +44,7 @@ setup(name='AGLOW',
           'sshtunnel',
           'snakebite',
           'tzlocal==1.5.1',   
+          'Flask-Login<0.5,>=0.3',
           'apache-airflow',
           'GRID_LRT>=0.4.3.1',
           'six'
