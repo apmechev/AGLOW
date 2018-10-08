@@ -1,38 +1,38 @@
-from datetime import datetime, timedelta
-import subprocess
-import fileinput
-import logging
-
 from airflow import DAG                                                                                                                     
 from airflow.operators.bash_operator import BashOperator
+from airflow.contrib.operators.LTA_staging import LOFARStagingOperator
+from airflow.contrib.operators.LRT_Sandbox import LRTSandboxOperator
+from airflow.contrib.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
+from airflow.contrib.operators.LRT_submit import LRTSubmit
+from airflow.contrib.operators.data_staged import Check_staged
+from airflow.contrib.sensors.dcache_sensor import dcacheSensor
+
+from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.dummy_operator import DummyOperator
+from airflow.contrib.operators.LRT_storage_to_srm import Storage_to_Srmlist
 from airflow.models import Variable
 
-
-from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
-from AGLOW.airflow.operators.LRT_Sandbox import LRTSandboxOperator
-from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
-from AGLOW.airflow.operators.LRT_submit import LRTSubmit
-from AGLOW.airflow.operators.data_staged import Check_staged
-from AGLOW.airflow.sensors.dcache_sensor import dcacheSensor
-from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist
-
-from AGLOW.airflow.utils.AGLOW_utils import get_next_field
-from AGLOW.airflow.utils.AGLOW_utils import count_files_uberftp
-from AGLOW.airflow.utils.AGLOW_utils import count_grid_files
-from AGLOW.airflow.utils.AGLOW_utils import stage_if_needed
-from AGLOW.airflow.utils.AGLOW_utils import get_next_field
-from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_taskid
-from AGLOW.airflow.utils.AGLOW_utils import get_srmfile_from_dir
-from AGLOW.airflow.utils.AGLOW_utils import count_from_task
-from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
-from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
-from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task
+#Import helper fucntions 
+from airflow.utils.AGLOW_utils import get_next_field
+from airflow.utils.AGLOW_utils import count_files_uberftp
+from airflow.utils.AGLOW_utils import count_grid_files
+from airflow.utils.AGLOW_utils import stage_if_needed
+from airflow.utils.AGLOW_utils import get_next_field
+from airflow.utils.AGLOW_utils import set_field_status_from_taskid
+from airflow.utils.AGLOW_utils import get_srmfile_from_dir
+from airflow.utils.AGLOW_utils import count_from_task
+from airflow.utils.AGLOW_utils import get_field_location_from_srmlist
+from airflow.utils.AGLOW_utils import set_field_status_from_task_return
+from airflow.utils.AGLOW_utils import modify_parset_from_fields_task
+#from airflow.contrib.operators.LTA_staging import LOFARStagingOperator_from_task
+#from airflow.utils.AGLOW_utils import get_var_from_task_decorator
 
 from GRID_LRT.Staging.srmlist import srmlist
-from GRID_LRT import token
+import subprocess
+import  fileinput
+import logging 
 
 def archive_tokens_from_task(token_task, delete=False, **context):
     """ Determines whic tokens to archive and saves them. delete if necessary
@@ -45,7 +45,7 @@ def archive_tokens_from_task(token_task, delete=False, **context):
 
 def archive_all_tokens(token_type, archive_location, delete=False):
     pc = picas_cred()
-    th = token.TokenHandler(t_type=token_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
+    th = Token.Token_Handler(t_type=token_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
     token_archive = th.archive_tokens(delete_on_save=delete, compress=True)
     logging.info("Archived tokens from " + token_type + " and made an archive: " + token_archive)
     logging.info(token_archive + " size is " + str(os.stat(token_archive).st_size))
@@ -59,6 +59,8 @@ def force_staging(srmfile1, **args):
 
 def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     field_name = 'fields_'
+    Variable.get("SKSP_Prod_Calibrator_srm_file_Juelich","")
+    Variable.get("SKSP_Prod_Target_srm_file_Juelich","")
 
     dag = DAG(dag_id=parent_dag_name+'.'+subdagname, default_args=dag_args, schedule_interval='@once' , catchup=True)
 
@@ -175,7 +177,7 @@ def juelich_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
         dag=dag)
         
     tokens_targ1 = TokenCreator( task_id='token_targ1',
-            staging_task={'name':'stage_targ','parent_dag':False},
+        staging_task={'name':'check_targstaged','parent_dag':False},
         sbx_task={'name':'sbx_targ1','parent_dag':False},
         srms_task={'name':'get_srmfiles','parent_dag':True},
         token_type=field_name,
