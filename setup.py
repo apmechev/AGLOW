@@ -44,7 +44,9 @@ setup(name='AGLOW',
           'tzlocal<2.0.0.0,>=1.5.0.0',
           'apache-airflow',
           'GRID_LRT>=0.4.3.1',
-          'six'
+          'six',
+          'sshtunnel',
+          'snakebite'
           ],
       include_package_data=True,
       data_files=[("logo",["AGLOW/AGLOW_logo.png"]),
