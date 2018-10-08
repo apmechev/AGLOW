@@ -8,6 +8,19 @@ from AGLOW.airflow.operators.data_staged import Check_staged
 from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist                                                                                                      
 from AGLOW.airflow.sensors.dcache_sensor import dcacheSensor
 
+#Import helper fucntions 
+from AGLOW.airflow.utils.AGLOW_utils import get_next_field
+from AGLOW.airflow.utils.AGLOW_utils import count_files_uberftp
+from AGLOW.airflow.utils.AGLOW_utils import count_grid_files
+from AGLOW.airflow.utils.AGLOW_utils import stage_if_needed
+from AGLOW.airflow.utils.AGLOW_utils import get_next_field
+from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_taskid
+from AGLOW.airflow.utils.AGLOW_utils import get_srmfile_from_dir
+from AGLOW.airflow.utils.AGLOW_utils import count_from_task
+from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
+from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
+from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task
+
 
 from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
@@ -15,18 +28,6 @@ from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.dummy_operator import DummyOperator
 from airflow.models import Variable
 
-#Import helper fucntions 
-from airflow.utils.AGLOW_utils import get_next_field
-from airflow.utils.AGLOW_utils import count_files_uberftp
-from airflow.utils.AGLOW_utils import count_grid_files
-from airflow.utils.AGLOW_utils import stage_if_needed
-from airflow.utils.AGLOW_utils import get_next_field
-from airflow.utils.AGLOW_utils import set_field_status_from_taskid
-from airflow.utils.AGLOW_utils import get_srmfile_from_dir
-from airflow.utils.AGLOW_utils import count_from_task
-from airflow.utils.AGLOW_utils import get_field_location_from_srmlist
-from airflow.utils.AGLOW_utils import set_field_status_from_task_return
-from airflow.utils.AGLOW_utils import modify_parset_from_fields_task
 #from airflow.contrib.operators.LTA_staging import LOFARStagingOperator_from_task
 #from airflow.utils.AGLOW_utils import get_var_from_task_decorator
 
