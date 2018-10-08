@@ -41,6 +41,7 @@ setup(name='AGLOW',
           ],
       install_requires=[
           'flask-appbuilder==1.11.1',
+          'tzlocal<2.0.0.0,>=1.5.0.0',
           'apache-airflow',
           'GRID_LRT>=0.4.3.1',
           'six'
