@@ -40,11 +40,7 @@ setup(name='AGLOW',
           'pytest', 
           ],
       install_requires=[
-          'python-daemon==2.1.2',
-          'sshtunnel',
-          'snakebite',
-          'tzlocal==1.5.1',   
-          'Flask-Login<0.5,>=0.3',
+          'flask-appbuilder==1.11.1',
           'apache-airflow',
           'GRID_LRT>=0.4.3.1',
           'six'
