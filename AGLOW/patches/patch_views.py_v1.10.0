@@ -11,6 +11,6 @@
 >                 if 'field_name' in xcom_value.keys():
 >                     SKSP_field = xcom_value['field_name']
 >         else: 
->             SKSP_field = "Unknowr"
+>             SKSP_field = "Unknown"
 1482a1496
 >             SKSP_field=SKSP_field,
