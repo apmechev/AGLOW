@@ -208,3 +208,4 @@ class LOFARStagingOperator(BaseOperator):
 
     def on_kill(self):
         logging.warn('Sending SIGTERM signal to staging group')
+        logging.warn("Process killed")

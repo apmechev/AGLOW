@@ -89,4 +89,3 @@ class LRTSandboxOperator(BaseOperator):
         logging.warn('Sending SIGTERM signal to staging group')
         self.state=State.SHUTDOWN
         self.SBX.cleanup()
-        os.killpg(os.getpgid(self.sp.pid), signal.SIGTERM)

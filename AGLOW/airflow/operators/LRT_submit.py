@@ -115,7 +115,4 @@ class LRTSubmit(BaseOperator):
         token_id=context['task_instance'].xcom_pull(task_ids=self.token_task)['token_type']
 
 
-    def on_kill(self):
-        logging.warn('Sending SIGTERM signal to staging group')
-        self.state=State.SHUTDOWN
-        os.killpg(os.getpgid(self.sp.pid), signal.SIGTERM)
+
