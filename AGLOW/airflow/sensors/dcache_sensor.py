@@ -45,17 +45,24 @@ class dcacheSensor(BaseSensorOperator):
             poke_interval=300,
             timeout=60*60*24*4, 
             parent_dag=False,
+            gsi_path=None,
+            num_jobs=None,
             *args, **kwargs):
         self.token_task = token_task
         self.threshold = success_threshold
         self.parent_dag = parent_dag
         self.glite_status='Waiting'
+        self.gsi_path=gsi_path
+        self.dcache_location = None
+        self.num_jobs = num_jobs
         super(dcacheSensor, self).__init__(poke_interval=poke_interval,
                 timeout=timeout, *args, **kwargs)
 
     def poke(self, context):
         if not hasattr(self,'dcache_location'):
             self.get_picas_values(context)
+        if self.gsi_path:
+            self.build_dcache_location_from_gsi_folder(self.gsi_path)
         g_proc = subprocess.Popen(['uberftp','-ls', self.dcache_location] ,
                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         g_result = g_proc.communicate() 
@@ -72,9 +79,15 @@ class dcacheSensor(BaseSensorOperator):
 
     def get_picas_values(self, context):
         t_task = context['task_instance'].xcom_pull(task_ids=self.token_task)
-        self.dcache_location = t_task['output_dir']
-        self.num_jobs = t_task['num_jobs']
+        if not self.dcache_location:
+            self.dcache_location = t_task['output_dir']
+        if not self.num_jobs:
+            self.num_jobs = t_task['num_jobs']
+        self.OBSID = t_task['OBSID']
         if self.num_jobs == 0:
             raise RuntimeError("Zero Jobs expected from  "+str(self.token_task)+" task. ")
         logging.info('Checking files in : ' + self.dcache_location)
+
+    def build_dcache_location_from_gsi_folder(self, folder_path):
+        self.dcache_location = self.gsi_path+"/" + self.OBSID
 
