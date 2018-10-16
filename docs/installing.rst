@@ -2,9 +2,9 @@
 Installation
 ************
 
-.. DANGER::
-  |  This software is still in pre-alpha!!
-  |   It will not do what you want it to do!
+.. NOTE::
+  |   Some AGLOW operators use GRID\_LRT and 
+  |   so you need the correct GRID\_LRT version to use them
 
 
 Via Python Package Index 
