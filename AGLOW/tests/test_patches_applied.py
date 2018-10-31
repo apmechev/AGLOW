@@ -2,7 +2,7 @@ import airflow.www as www
 
 
 WWW_LOC = www.__file__.split('__init__.py')[0]
-TEMPLATES_LOC = "{}/airflow/templates".format(WWW_LOC)
+TEMPLATES_LOC = "{}/templates/airflow".format(WWW_LOC)
 
 def test_dag_patched():
     dagfile = TEMPLATES_LOC+"/dag.html"
