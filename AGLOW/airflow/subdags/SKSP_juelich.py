@@ -25,7 +25,6 @@ from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.dummy_operator import DummyOperator
-from airflow.contrib.operators.LRT_storage_to_srm import Storage_to_Srmlist
 from airflow.models import Pool
 from airflow import settings
 
