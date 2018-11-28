@@ -23,6 +23,7 @@ from subprocess import Popen, STDOUT, PIPE
 from tempfile import gettempdir, NamedTemporaryFile, mkdtemp
 import tarfile
 import shutil
+import datetime
 
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
@@ -95,7 +96,7 @@ class TokenCreator(BaseOperator):
         """
         srms = self.get_staged_srms(context)
         if not srms:
-            print("Could not get the list of staged srms!")
+            logging.warn("Could not get the list of staged srms!")
         pc = get_picas_credentials.picas_cred()
         if self.pc_database:
             pc.database = self.pc_database
@@ -511,7 +512,8 @@ class TokenArchiver(BaseOperator):
         os.chdir(self.tmpdir)
         self.th.archive_tokens(delete_on_save=True)
         pc=get_picas_credentials.picas_cred()
-        self.tarfile = "tokens_"+pc.user+"_"+pc.database+"_"+self.th.t_type+".tar.gz"
+        now = datetime.datetime.now()
+        self.tarfile = "tokens_{}_{}_{}_{}-{}-{}.tar.gz".format(pc.user, pc.database, self.th.t_type, now.year, now.month, now.date)
         with tarfile.open(self.tmpdir+"/"+self.tarfile, "w:gz") as tar:
             tar.add(self.tmpdir)
         os.chdir(self.oldpwd)
