@@ -7,6 +7,7 @@ python:
   - "3.6"
 cache: pip
 install:
+    - export SLUGIFY_USES_TEXT_UNIDECODE=yes
     - pip install -e . 
     - pip install python-daemon==2.1.2
     - python setup.py build && python setup.py install --force
