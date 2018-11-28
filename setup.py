@@ -16,7 +16,11 @@ class PostInstallCommand(install):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         dirs =  get_airflow_directories()
         install.run(self)
-        apply_patch('dag.html')
+        import airflow.www as www                                                                                                                                                                                                           
+        WWW_LOC = www.__file__.split('__init__.py')[0]
+        TEMPLATES_LOC = "{}/templates/airflow".format(WWW_LOC)
+        airflow_loc = airflow.__file__.split('__init__')[0]
+        apply_patch(TEMPLATES_LOC+'/dag.html')
 
 class PreInstallCommand(install):
     os.environ['AIRFLOW_GPL_UNIDECODE']='yes'
