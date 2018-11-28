@@ -16,6 +16,7 @@ class PostInstallCommand(install):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         dirs =  get_airflow_directories()
         install.run(self)
+        apply_patch('dag.html')
 
 class PreInstallCommand(install):
     os.environ['AIRFLOW_GPL_UNIDECODE']='yes'
