@@ -8,9 +8,8 @@ python:
 cache: pip
 install:
     - export AIRFLOW_GPL_UNIDECODE=yes
-    - pip install -e . 
     - pip install python-daemon==2.1.2
-    - python setup.py build && python setup.py install --force
+    - python setup.py build -v && python setup.py install --force
 script:
   - py.test #--cov-report term-missing --cov app -v
 
