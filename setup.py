@@ -6,7 +6,7 @@ from setuptools.command.install import install
 from AGLOW.version import __version__
 import AGLOW
 import os
-
+import logging
 
 PATCH_LOC='AGLOW/patches/'
 
@@ -20,6 +20,7 @@ class PostInstallCommand(install):
         WWW_LOC = www.__file__.split('__init__.py')[0]
         TEMPLATES_LOC = "{}/templates/airflow".format(WWW_LOC)
         airflow_loc = airflow.__file__.split('__init__')[0]
+        print("Will patch "+TEMPLATES_LOC+'/dag.html')
         apply_patch(TEMPLATES_LOC+'/dag.html')
 
 class PreInstallCommand(install):
@@ -32,6 +33,7 @@ def apply_patch(orig_file):
     patchdag = subprocess.Popen(['patch',orig_file,a_loc+'/patches/patch_'+orig_file_stripped+'_v'+airflow.__version__]
             ,stdout=subprocess.PIPE,stderr=subprocess.PIPE)
     o=patchdag.communicate()
+    logging.warn("Patching file"+orig_file)
     print("Patching file "+orig_file)
     print(o)
 
