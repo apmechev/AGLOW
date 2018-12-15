@@ -6,13 +6,14 @@ from setuptools.command.install import install
 from AGLOW.version import __version__
 import os
 import logging
+import subprocess
 
 PATCH_LOC='AGLOW/patches/'
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
 
-    def get_airflow_directories():
+    def get_airflow_directories(self):
         import airflow
         airflow_file = airflow.__file__
         airflow_dirs = {}
@@ -31,6 +32,7 @@ class PostInstallCommand(install):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
         dirs =  self.get_airflow_directories()
         install.run(self)
+        import airflow
         import airflow.www as www                                                                                                                                                                                                           
         WWW_LOC = www.__file__.split('__init__.py')[0]
         TEMPLATES_LOC = "{}/templates/airflow".format(WWW_LOC)
