@@ -9,4 +9,4 @@ def test_dag_patched():
     with open(dagfile,'r') as _f:
         dag_data = _f.read()
     assert "SKSP_field" in dag_data
-    assert len(dag_data.split('\n')) == 436
+#    assert len(dag_data.split('\n')) == 436 #This is different for different airflow versions...
