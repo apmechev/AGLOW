@@ -1,0 +1,11 @@
+35,36c35,41
+<         <input id="pause_resume" dag_id="{{ dag.dag_id }}" type="checkbox" {{ "checked" if not dag.is_paused else "" }} data-toggle="toggle" data-size="mini" method="post">
+<         <span style='color:#AAA;'>DAG: </span> <span> {{ dag.dag_id }}</span> <small class="text-muted"> {{ dag.description }} </small>
+---
+>         {% if 'get_next_field' in dag.task_ids %}
+>             <input id="pause_resume" dag_id="{{ dag.dag_id }}" type="checkbox" {{ "checked" if not dag.is_paused else "" }} data-toggle="toggle" data-size="mini" method="post">
+>             <span style='color:#AAA;'>SKSP_DAG: </span> <span> {{ dag.dag_id  }} : Field {{ SKSP_field  }}</span> <small class="text-muted"> {{ dag.description  }} </small>
+>         {% else %}
+>             <input id="pause_resume" dag_id="{{ dag.dag_id  }}" type="checkbox" {{ "checked" if not dag.is_paused else ""  }} data-toggle="toggle" data-size="mini" method="post">
+>             <span style='color:#AAA;'>DAG: </span> <span> {{ dag.dag_id  }}</span> <small class="text-muted"> {{ dag.description  }} </small>
+>         {% endif %}  
