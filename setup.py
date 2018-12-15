@@ -4,7 +4,6 @@
 from setuptools import setup
 from setuptools.command.install import install
 from AGLOW.version import __version__
-import AGLOW
 import os
 import logging
 
@@ -28,6 +27,7 @@ class PreInstallCommand(install):
 
 def apply_patch(orig_file):
     import airflow
+    import AGLOW
     a_loc = AGLOW.__file__.split('__init__')[0]
     orig_file_stripped = orig_file.split('/')[-1]
     patchdag = subprocess.Popen(['patch',orig_file,a_loc+'/patches/patch_'+orig_file_stripped+'_v'+airflow.__version__]
@@ -54,6 +54,10 @@ setup(name='AGLOW',
           'snakebite'
           ],
       include_package_data=True,
+      cmdclass={
+#        'develop': PostDevelopCommand,
+        'install': PostInstallCommand,
+      },
       data_files=[("logo",["AGLOW/AGLOW_logo.png"]),
                   ("AGLWO/patches",[PATCH_LOC + i for i in os.listdir(PATCH_LOC)])
                  ],
