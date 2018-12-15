@@ -11,9 +11,25 @@ PATCH_LOC='AGLOW/patches/'
 
 class PostInstallCommand(install):
     """Post-installation for installation mode."""
+
+    def get_airflow_directories():
+        import airflow
+        airflow_file = airflow.__file__
+        airflow_dirs = {}
+        airflow_dirs['airflow_base_dir'] = airflow_file.split('__init__')[0]
+        base_dir = airflow_dirs['airflow_base_dir']
+        airflow_dirs['airflow_contrib_dir'] = base_dir + 'contrib/'
+        airflow_dirs['airflow_operators_dir'] = base_dir + 'contrib/operators/'
+        airflow_dirs['airflow_sensors_dir'] = base_dir + 'contrib/sensors/'
+        airflow_dirs['airflow_utils_dir'] = base_dir + 'utils/'
+        for key in airflow_dirs:
+            if not os.path.exists(airflow_dirs[key]):
+                raise RuntimeError("Directory %s doesn't exist" % airflow_dirs[key])
+        return airflow_dirs
+
     def run(self):
         # PUT YOUR POST-INSTALL SCRIPT HERE or CALL A FUNCTION
-        dirs =  get_airflow_directories()
+        dirs =  self.get_airflow_directories()
         install.run(self)
         import airflow.www as www                                                                                                                                                                                                           
         WWW_LOC = www.__file__.split('__init__.py')[0]
@@ -83,18 +99,3 @@ setup(name='AGLOW',
       'Programming Language :: Python :: 3.3',
       'Programming Language :: Python :: 3.4'] 
      )
-
-def get_airflow_directories():
-    import airflow
-    airflow_file = airflow.__file__
-    airflow_dirs = {}
-    airflow_dirs['airflow_base_dir'] = airflow_file.split('__init__')[0]
-    base_dir = airflow_dirs['airflow_base_dir']
-    airflow_dirs['airflow_contrib_dir'] = base_dir + 'contrib/'
-    airflow_dirs['airflow_operators_dir'] = base_dir + 'contrib/operators/'
-    airflow_dirs['airflow_sensors_dir'] = base_dir + 'contrib/sensors/'       
-    airflow_dirs['airflow_utils_dir'] = base_dir + 'utils/'
-    for key in airflow_dirs:
-        if not os.path.exists(airflow_dirs[key]):
-            raise RuntimeError("Directory %s doesn't exist" % airflow_dirs[key])
-    return airflow_dirs
