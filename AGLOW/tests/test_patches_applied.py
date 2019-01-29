@@ -1,5 +1,5 @@
 import airflow.www as www
-import airflow.__version__
+from  airflow import __version__
 
 
 WWW_LOC = www.__file__.split('__init__.py')[0]
