@@ -24,7 +24,7 @@ dependencies:
   'zlib=1.2.8=3'
 - pip:
   - alembic==0.8.10
-  - apache-airflow==1.9.0
+  - apache-airflow>1.9.0
   - certifi==2017.4.17
   - tzlocal==1.5.1
   - chardet==3.0.4
