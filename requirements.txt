@@ -1,0 +1,7 @@
+apache-airflow
+GRID_LRT>=0.4.3.1
+six
+sshtunnel
+snakebite
+itsdangerous
+
