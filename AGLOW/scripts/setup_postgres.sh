@@ -18,24 +18,24 @@ ls ${AIRFLOW_HOME}/postgres/bin/
 
 echo "Setting up psycopg"
 cd ${AIRFLOW_HOME}
-wget https://pypi.python.org/packages/dd/47/000b405d73ca22980684fd7bd3318690cc03cfa3b2ae1c5b7fff8050b28a/psycopg2-2.7.3.2.tar.gz#md5=8114e672d5f23fa5329874a4314fbd6f
-tar -zxvf psycopg2-2.7.3.2.tar.gz
-rm psycopg2-2.7.3.2.tar.gz
-cd psycopg2-2.7.3.2/
+pip install psycopg2 --upgrade
+
 python setup.py build_ext  --pg-config ${AIRFLOW_HOME}/postgres/bin/pg_config build 
 python setup.py install
 
 cd ${AIRFLOW_HOME}
 ${AIRFLOW_HOME}/postgres/bin/initdb -D ${AIRFLOW_HOME}/postgres/database/
 
-./start_postgress.sh 
+./AGLOW/scripts/start_postgress.sh 
 
-#YOU NEED TO DO THIS IN POSTGRESS:
+#####YOU NEED TO DO THIS IN POSTGRESS:
 # ${AIRFLOW_HOME}/postgres/bin/psql -d postgres
 #>psql (10.1)
 #>Type "help" for help.
-#>postgres=# CREATE DATABASE database_name;
+#>postgres=# CREATE DATABASE AGLOW_DB;
 
-#Then change the Executor to Local Executor and the sqlAlchemy to
-#sql_alchemy_conn = postgresql+psycopg2://apmechev:password@localhost/database_name
+###Then, insife airflow.cfg:
+###change the Executor to Local Executor and the sqlAlchemy to
+#sql_alchemy_conn = postgresql+psycopg2://apmechev:password@localhost/AGLOW_DB
+#
 #Then run airflow initdb
