@@ -15,3 +15,23 @@ The AGLOW package is best set up in a conda environment. The included environmen
 conda env create -f environment.yml 
 ```
 
+
+```bash
+mkdir ~/AGLOW_tutorial{,/dags}
+export AIRFLOW_HOME=~/AGLOW_tutorial
+
+conda  create -n AGLOW_tutorial python=3.6
+source activate AGLOW_tutorial
+
+export SLUGIFY_USES_TEXT_UNIDECODE=yes
+pip install aglow
+
+#To install postgress in Userspace:
+./AGLOW/scripts/setup_postgres.sh
+## If launching fails, check the log, you might need to change the configurations at 
+## ${AIRFLOW_HOME}/postgres/database/postgresql.conf
+
+#Run each of these command inside a screen: 
+airflow scheduler
+airflow webserver
+```

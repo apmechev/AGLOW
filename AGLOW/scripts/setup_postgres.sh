@@ -26,7 +26,7 @@ python setup.py install
 cd ${AIRFLOW_HOME}
 ${AIRFLOW_HOME}/postgres/bin/initdb -D ${AIRFLOW_HOME}/postgres/database/
 
-./AGLOW/scripts/start_postgress.sh 
+./scripts/start_postgress.sh 
 
 #####YOU NEED TO DO THIS IN POSTGRESS:
 # ${AIRFLOW_HOME}/postgres/bin/psql -d postgres
@@ -36,6 +36,6 @@ ${AIRFLOW_HOME}/postgres/bin/initdb -D ${AIRFLOW_HOME}/postgres/database/
 
 ###Then, insife airflow.cfg:
 ###change the Executor to Local Executor and the sqlAlchemy to
-#sql_alchemy_conn = postgresql+psycopg2://apmechev:password@localhost/AGLOW_DB
+#sql_alchemy_conn = postgresql+psycopg2://apmechev:password@localhost/aglow_db
 #
 #Then run airflow initdb
