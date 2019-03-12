@@ -80,7 +80,7 @@ setup(name='AGLOW',
       data_files=[("logo",["AGLOW/AGLOW_logo.png"]),
                   ("AGLOW/patches",[PATCH_LOC + i for i in os.listdir(PATCH_LOC)]),
                   ("setup_script",["AGLOW/scripts/setup_postgres.sh"]),
-                  ("Launch_script",["AGLOW/scripts/start_postgres.sh"])
+                  ("Launch_script",["AGLOW/scripts/start_postgress.sh"])
                  ],
       description='AGLOW: Automated Grid-enabled LOFAR Workflows',
       long_description="Distributing, Automating and Accelerating LOFAR data processing using an industry standard workflow orchestration software on a High Throughput cluster at the Dutch Grid location.",
