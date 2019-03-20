@@ -25,7 +25,7 @@ from AGLOW.airflow.utils.AGLOW_utils import count_from_task
 from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
 from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
-from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task 
+from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_tokens 
 #from airflow.utils.AGLOW_utils import archive_tokens_from_task
 from GRID_LRT.Staging import state_all
 
@@ -108,8 +108,8 @@ def grid_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         
     files_done = PythonOperator(
             task_id = 'files_done',
-            python_callable = check_folder_for_files_from_task,
-            op_args = ['tokens','output_dir', 230],
+            python_callable = check_folder_for_files_from_tokens,
+            op_args = ['tokens','output_dir', 1.0],
             dag=dag
             )
 
