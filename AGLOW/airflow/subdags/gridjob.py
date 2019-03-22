@@ -1,10 +1,8 @@
 import os
 from airflow import DAG
 from airflow.operators.bash_operator import BashOperator
-from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
-from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
+from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader, ModifyTokenStatus
 from AGLOW.airflow.operators.LRT_submit import LRTSubmit 
-from AGLOW.airflow.operators.data_staged import Check_staged
 from AGLOW.airflow.sensors.glite_wms_sensor import gliteSensor
 from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
@@ -70,12 +68,14 @@ def grid_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
             'files_per_job':1,
             'field_prefix':'fields_',
             'srmfile_task':'srmfile',
+            'append_task':None,
             'NCPU':2
             } 
     
     #Create the tokens and populate the srm.txt 
     tokens = TokenCreator(task_id='tokens',
             staging_task ={'name':args_dict['srmfile_task'], 'parent_dag':True},
+            append_task = args_dict['append_task'],
             token_type=args_dict['field_prefix'],
             tok_config =args_dict['cfg'],
             files_per_token=args_dict['files_per_job'],
