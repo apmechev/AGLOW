@@ -58,14 +58,13 @@ class Check_staged(BaseOperator):
         super(Check_staged, self).__init__(*args, **kwargs)
 
     def execute(self, context):
+        logging.info(self.srmkey)
         if isinstance(self.srmfile,dict):
             task_name = self.srmfile['name']
             task_parent_dag = self.srmfile['parent_dag']
             sbx_xcom = get_task_instance(context, task_name, task_parent_dag)
-            self.srmfile = sbx_xcom[self.srmkey]
-        elif "/" not in self.srmfile:
-            self.srmfile= Variable.get(self.srmfile)
-        logging.info(self.srmfile)
+            self.srmfile = sbx_xcom[self.srmkey]  
+        return {'staged':False,'srmfile':str(self.srmfile)} #I return false until gfal2 works on py3+
         staging_statuses=state_all.main(self.srmfile, verbose=False)
         logging.info(staging_statuses)
         if state_all.percent_staged(staging_statuses) > self.threshold:
