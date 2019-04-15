@@ -69,7 +69,6 @@ setup(name='AGLOW',
           'GRID_LRT>=0.4.3.1',
           'six',
           'sshtunnel',
-          'snakebite',
           'itsdangerous'
           ],
       include_package_data=True,
