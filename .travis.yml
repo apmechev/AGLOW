@@ -9,6 +9,7 @@ cache: pip
 install:
     - export AIRFLOW_GPL_UNIDECODE=yes
     - pip install -e . 
+    - pip install --upgrade Flask
     - pip install python-daemon==2.1.2
     - python setup.py build -v && python setup.py install
 script:
