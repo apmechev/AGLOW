@@ -58,7 +58,7 @@ class LRTSubmit(BaseOperator):
             token_task,
             NCPU=2,
             parameter_step=4,
-            queue = None,
+            queue = "medium",
             run_location='sara',
             output_encoding='utf-8',
             *args, **kwargs):
@@ -79,19 +79,17 @@ class LRTSubmit(BaseOperator):
         """
         pc=get_picas_credentials.picas_cred()
         self.token_id=context['task_instance'].xcom_pull(task_ids=self.token_task)['token_type']
-        
+        tokens = context['task_instance'].xcom_pull(task_ids=self.token_task)['token_ids']
         if self.token_id==None:
             raise RuntimeError("Could not get the token list from the "+str(self.token_task)+ " task")
     
         self.initialilze_submitter(location = self.location,
                 NCPU = self.NCPU, parameter_step = self.parameter_step)
         pc=get_picas_credentials.picas_cred()
-        th=token.TokenHandler(t_type=self.token_id,
-                    uname=pc.user,pwd=pc.password,dbn=pc.database)
-        token_list=th.list_tokens_from_view('todo')
-        
-        self.submitter.numjobs=int(len(token_list)) 
-        if len(token_list)<1:
+        print("TODO: Just listing all tokens, not just todo tokens: FIX:")
+        print(self.token_id)
+        self.submitter.numjobs=int(len(tokens)) 
+        if len(tokens)<1:
             raise RuntimeError("Not enough todo tokens to submit!")
         with self.submitter as sub:
             launch_ID=sub.launch()
@@ -106,9 +104,9 @@ class LRTSubmit(BaseOperator):
         self.submitter=None 
         if location=='sara':
             if self.queue:
-                self.submitter=submit.jdl_launcher(token_type=self.token_id, queue=self.queue, **kwargs)
+                self.submitter=submit.JdlLauncher(token_type=self.token_id, queue=self.queue, **kwargs)
             else:
-                self.submitter=submit.jdl_launcher(token_type=self.token_id,**kwargs)
+                self.submitter=submit.JdlLauncher(token_type=self.token_id,**kwargs)
 
 
     def get_token_list(self,context):
