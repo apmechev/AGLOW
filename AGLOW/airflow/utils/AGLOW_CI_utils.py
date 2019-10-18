@@ -1,6 +1,8 @@
+import warnings
 import requests
 import datetime
 import pickle
+from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
 
 def get_all_singularity_images(collection='1999',tag=None):
     collection = requests.get("https://www.singularity-hub.org/api/collections/{}"
@@ -29,8 +31,8 @@ def get_singularity_image_date(container_ID='6500'):
     image_files = requests.get("https://www.singularity-hub.org/api/containers/{}/"
             .format(container_ID)).json()['files']
     if len(image_files)==0:
-        print("WARNING: No image files exist, image probably building")
-        return None
+        warnings.warn("WARNING: No image files exist, image probably building")
+        return datetime.datetime(1970,1,1) 
     created_date = image_files[0]['timeCreated']
     update_date = image_files[0]['updated']
     name = image_files[0]['name']
@@ -72,25 +74,50 @@ def check_CI_run(ci_keys={'lofar.simg':{'type':'shub_image',
                           'prefactor/version3.0':{'type':'github_repo',
                                                   'repo_user':'lofar-astron',
                                                   'repo_name':'prefactor',
-                                                  'branch':'version3.0'}},
+                                                  'branch':'master'}},
                 savefile='/home/apmechev/.prefactor_v3.0_CI.pkl'):
+    """Uses the get_commit_date method to update the date of the latest commit
+       for each CI_item in the dictionary"""
     saved_runs = pickle.load(open(savefile,'rb'))
     for repo in ci_keys.keys():
-        ci_keys[repo]['saved_date'] = saved_runs[repo]
-        ci_keys[repo] = get_date_from_dict(ci_keys[repo])
+        ci_keys[repo]['saved_date'] = saved_runs[repo]['saved_date']
+        ci_keys[repo] = get_commit_date(ci_keys[repo])
     return ci_keys
         
 
-def get_date_from_dict(dictionary):
+def get_commit_date(dictionary):
+    """Gets the most recent commit date for the CI 'item'. Currently we support
+    Either shub images or github repos. The input is a CI 'item' encoded in a dictionary. 
+    The function adds a 'commit_date' field to this dict and returns it. """
     if dictionary['type'] == 'shub_image':
         images = get_all_singularity_images(dictionary['collection'], tag=dictionary['tag'])
         latest_image = get_latest_image(images)
-        dictionary['current_date'] = get_singularity_image_date(container_ID=latest_image['ID'])
+        dictionary['commit_date'] = get_singularity_image_date(container_ID=latest_image['ID'])
         dictionary['uri'] = latest_image['uri']
     if dictionary['type'] == 'github_repo':
-        dictionary['current_date'] = get_git_repository_date(repo_user=dictionary['repo_user'],
+        dictionary['commit_date'] = get_git_repository_date(repo_user=dictionary['repo_user'],
                                                              repo_name=dictionary['repo_name'],
                                                              branch=dictionary['branch'])
     return dictionary
 
+def save_dates(save_data, savefile='/home/apmechev/.prefactor_v3.0_CI.pkl'):
+    old_data = pickle.load(open(savefile,'rb'))
+    for key in old_data:
+        if old_data[key]['saved_date'] <= old_data[key]['commit_date']:
+            save_data[key] = old_data[key]
+            save_data[key]['saved_date']=datetime.datetime.now()
+    pickle.dump(save_data,open(savefile,'wb'))
 
+def _merge_two_dicts(x, y):
+    z = x.copy()   # start with x's keys and values
+    z.update(y)    # modifies z with y's keys and values & returns None
+    return z
+
+def save_dates_from_task(task_name, savefile='/home/apmechev/.prefactor_v3.0_CI.pkl', **context):
+    task_data = get_task_instance(context, task_name)
+    prev_data = pickle.load(open(savefile,'rb'))
+    merged_data = _merge_two_dicts(prev_data,task_data) 
+    for key in task_data.keys():
+        merged_data[key]['saved_date'] = datetime.datetime.now()
+    save_dates(merged_data, savefile)
+    
