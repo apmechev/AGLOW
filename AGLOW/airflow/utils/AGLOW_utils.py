@@ -200,6 +200,37 @@ def set_field_status_from_taskid(fields_file, task_id, status, **context):
     targ_OBSID = field_data['target_OBSID']
     set_field_status(fields_file, cal_OBSID, targ_OBSID, field_name, status)
 
+def get_list_from_dir(base_dir, **context):
+    OBSID = context['dag_run'].conf.get('OBSID')
+    OBSID= "1231231"
+    directory = str(base_dir + OBSID)
+    fold = gsifile.GSIFile(directory)
+    files = [i.location for i in fold.list_dir()]
+    files=[]
+    return files
+
+def copy_gsifile(src, dest):
+    dest_loc = dest.location
+    if dest.is_dir:
+        dest_loc+='/'
+    mv = subprocess.Popen(['globus-url-copy', src.location, dest_loc], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    out = mv.communicate()
+    if out[1]!='':
+            print(out[1])
+    return out 
+
+def copy_to_archive(src_dir='gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/distrib/SKSP',                                                                                                                          
+                    dest_dir='gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/archive/SKSP/',
+                    **context):
+    OBSID = get_task_instance(context, 'get_field_properties')['target_OBSID']
+    src_dir = src_dir+'/'+OBSID+"/"
+    dest_dir = dest_dir+"/"+OBSID+"/"
+    mk_res = subprocess.Popen(['uberftp', '-mkdir', dest_dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    mk_res.communicate()
+    src_files = gsifile.GSIFile(src_dir).list_dir()
+    dest_dir_obj = gisfile.GSIFile(dest_dir)
+    for source_file in src_files:
+        copy_gsifile(source_file, dest_dir_obj)
 
 def set_field_status_from_task_return(fields_file, task_id, status_task, **context):
     """Sets the field status based on the (String) reuturned by the status_task variable
