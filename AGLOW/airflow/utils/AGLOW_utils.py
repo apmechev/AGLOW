@@ -39,6 +39,11 @@ from GRID_LRT import token
 from GRID_LRT.auth.get_picas_credentials import picas_cred
 import tempfile
 from tempfile import mkstemp
+
+from GRID_LRT.token import TokenList
+from cloudant.client import CouchDB
+from GRID_LRT.token import caToken
+
 log = LoggingMixin().log
 
 Field_Statuses={'AAA':'Starting Processing',
@@ -64,15 +69,37 @@ def get_user_proxy(username):
     """
     pass
 
-def make_srmfile_from_step_results(prev_step_token_task):
-    pass
+def make_srmfile_from_step_results(prev_step_token_task, parent_dag=None):
+    """Makes a list of srms using the results of all the tokens in a previous task
+    """
+    if not parent_dag:
+        pass
+    else:
+        pass
 
-def check_if_enoug_output_files(outp_task):
-    pass
+def get_results_from_subdag(subdag_id, task='tokens', key="Results_location", return_key=None, **context):
+    if not return_key:
+        return_key=key
+    token_data = context['ti'].xcom_pull(dag_id=subdag_id, task_ids=task)
+    token_type = token_data['token_type']
+    token_ids = token_data['token_ids']
+    return {return_key: get_result_files_from_tokenlist(token_type, token_ids, key)}
 
 
-def launch_processing_subdag(prev_task, **context):
-    task_dict = context['ti'].xcom_pull(prev_task)
+def get_result_files_from_tokenlist(token_type, token_ids, key="Results_location", **kwargs):
+    pc = picas_cred()
+    client = CouchDB(pc.user,pc.password, url='https://picas-lofar.grid.surfsara.nl:6984',connect=True)                                 
+    db=client[pc.database]
+    tokenlist=TokenList(token_type=token_type, database=db)
+    for token_id in token_ids:
+        tokenlist.append(caToken(token_id=token_id, token_type=token_type, database=db))
+    tokenlist.fetch()
+    results = [i[key] for i in tokenlist if key in i]
+    if len(results) == 1:
+        return results[0]
+    return results
+
+def launch_processing_subdag(prev_task, **context): task_dict = context['ti'].xcom_pull(prev_task)
 
 def archive_tokens_from_task(token_task, delete=False, **context):
     """ Determines whic tokens to archive and saves them. delete if necessary
@@ -321,6 +348,31 @@ def check_folder_for_files_from_task(taskid, xcom_key, number, **context):
         number = len(th.list_tokens_from_view(view))
         check_folder_for_files(path,number)
     
+def check_folder_for_files_from_tokens(task_id, dummy, number, **context):
+    xcom_results = context['ti'].xcom_pull(task_ids=task_id)
+    tokens = list(xcom_results['token_ids'])
+    token_type = xcom_results['token_type']
+    pc = picas_cred()
+    client = CouchDB(pc.user,pc.password, url='https://picas-lofar.grid.surfsara.nl:6984',connect=True)
+    db=client[pc.database] 
+    tokenlist=TokenList(token_type=token_type, database=db)
+    for token_id in tokens:
+        tokenlist.append(caToken(database=db, token_type=token_type, token_id=token_id))
+    tokenlist.fetch()
+    for t in tokenlist:
+        if t['status']!='done':
+            raise RuntimeError("Token {} is not in status 'done' but in status {}".format(t['_id'],t['status']))
+    print("All jobs in status 'done' ")
+    locations = [t['Results_location'] for t in tokenlist]
+    if len(locations) < number:
+        print("Only {} files found!".format(len(locations)))
+    for output_file in locations:
+        c = subprocess.Popen(['uberftp','-ls', output_file],
+                           stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        out = c.communicate()
+        if not out[0].decode().strip().split('\n')[0] :
+            print("{} not found".format(output_file))
+
 
 def count_grid_files(srmlist_file, task_if_less,
         task_if_more, pipeline="SKSP",step='pref_cal1',min_num_files=1):
