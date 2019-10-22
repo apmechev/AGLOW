@@ -66,7 +66,7 @@ setup(name='AGLOW',
           ],
       install_requires=[
           'apache-airflow',
-          'GRID_LRT>=0.4.3.1',
+          'GRID_LRT>=1.0',
           'six',
           'sshtunnel',
           'itsdangerous'
