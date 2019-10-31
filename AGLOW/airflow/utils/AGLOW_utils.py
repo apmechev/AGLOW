@@ -246,18 +246,18 @@ def set_field_status_from_task_return(fields_file, task_id, status_task, **conte
 
 def get_field_location_from_srmlist(srmlist_task, srmfile_key='targ_srmfile', **context):
     """Gets the srmlist from a task and returns the location of the field
-    IE the LTA location where the raw data is stored"""
+    IE the lta location where the raw data is stored"""
     field_loc="U" #U=unknown
     srm_data=context['ti'].xcom_pull(srmlist_task)
     srmfile=srm_data[srmfile_key]
     _s_list=srmlist()
     for i in  open(srmfile,'r').read().split():
         _s_list.append(i)
-    if _s_list.LTA_location == 'juelich':
+    if _s_list.lta_location == 'juelich':
         return "juelich"
-    if _s_list.LTA_location == 'sara':
+    if _s_list.lta_location == 'sara':
         return "sara"
-    if _s_list.LTA_location == 'poznan':
+    if _s_list.lta_location == 'poznan':
         return "poznan"
     return "UNK"
 
