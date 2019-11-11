@@ -14,8 +14,6 @@
 
 
 from builtins import bytes
-import time
-import json
 import os
 import os.path
 import signal
@@ -26,7 +24,6 @@ from tempfile import gettempdir, NamedTemporaryFile, mkdtemp
 import tarfile
 import shutil
 import datetime
-from tempfile import NamedTemporaryFile
 
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
@@ -36,49 +33,13 @@ from airflow.utils.state import State
 from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
 
 #import progressbar
-from GRID_LRT.token import TokenList
+from GRID_LRT import token
 from GRID_LRT.auth import get_picas_credentials
 from GRID_LRT.Staging.srmlist import srmlist
 from GRID_LRT.Staging.srmlist import slice_dicts
-from cloudant.client import CouchDB  
-from GRID_LRT.token import caToken  
-from GRID_LRT.token import TokenJsonBuilder  
-
+import yaml
 
 import pdb
-
-
-
-class JustMakeTokens(BaseOperator):
-    """Just created a umber of tokens using a configuration file without
-    uploading anything. """
-    template_fields = ()
-    template_ext = ()
-    ui_color = '#f3f92c'
-
-
-    def __init__(
-            self,
-            num_jobs,
-            id_prefix='SB',
-            id_start=0,
-            id_step=1, 
-            pc_database=None):
-        pass
-
-
-    def modify_fields(self, context):
-        """If the append_task exists, this moethod will add all key:value pairs
-        in its xcom to every token. This is used to for example take the results
-        of the calibration taks and name it 'CAL_RESULTS'"""
-        print(self.append_task)
-        append_xcom = get_task_instance(context, 
-                                        self.append_task['name'],
-                                        parent_dag= self.append_task['parent_dag'])
-        for k in append_xcom:
-            for token in self.token_list:
-                token[k] = append_xcom[k]
-        self.token_list.save()
 
 class TokenCreator(BaseOperator):
     """
@@ -86,15 +47,11 @@ class TokenCreator(BaseOperator):
     The tokens are a set of documents that contain the metadata for each processing
     job as well as the job's progress, step completion times, and etc. 
 
+    :param sbx_task: The name of the sandbox task which passes the sbx_loc to the tokens
     :type sbx_task: string
     :param srms: a list of the srms that need to be staged
     :type srms: list
     :param stageID: In case staging was already done
-    # 
-    # 
-    # 
-    # 
-    # 
     :type stageID: string
     :type output_encoding: output encoding of bash command
     """
@@ -106,32 +63,27 @@ class TokenCreator(BaseOperator):
     def __init__(
             self,
             tok_config,
+            sbx_task,
             staging_task,
-            append_task = None, 
+            srms_task = None,
             fields_task = None,
             pc_database=None,
-            subband_prefix = None,
-            subband_suffix = None,
+            subband_prefix = 'SB',
+            subband_suffix = '_',
             token_type = 'test_',
             files_per_token = 10,
-
             output_encoding = 'utf-8',
             *args, **kwargs):
 
         super(TokenCreator, self).__init__(*args, **kwargs)
         self.pc_database = pc_database
-        self.tok_config  = tok_config  
+        self.tok_config  =  tok_config  
+        self.sbx_task = sbx_task
         self.fields_task = fields_task
-        if subband_prefix:
-            self.subband_prefix = subband_prefix
-        else:
-            self.subband_prefix = "SB"
-        if subband_suffix:
-            self.subband_suffix = subband_suffix
-        else:
-            self.subband_suffix = "_"
+        self.subband_prefix = subband_prefix
+        self.subband_suffix = subband_suffix
         self.staging_task = staging_task
-        self.append_task = append_task
+        self.srms_task = srms_task
         self.files_per_token = files_per_token
         self.output_encoding  =  output_encoding
         self.t_type = token_type
@@ -158,14 +110,23 @@ class TokenCreator(BaseOperator):
         else:
             app = srms.obsid
         self.t_type= self.t_type+app
-        tok_settings = json.load(open(self.tok_config,'rb'))
-        token_variables = tok_settings['Job']['variables']
-        client = CouchDB(pc.user,pc.password, url='https://picas-lofar.grid.surfsara.nl:6984',connect=True) 
-        self.db=client[pc.database] 
+        tok_settings = yaml.load(open(self.tok_config,'rb'))['Token']
+        pipe_type = tok_settings['PIPELINE_STEP']
+        th = token.TokenHandler(t_type=self.t_type,
+                    uname=pc.user,pwd=pc.password,dbn=pc.database)
+        th.add_overview_view()
+        th.add_status_views()
+        th.add_view(view_name = pipe_type, cond='doc.PIPELINE_STEP == "{0}" '.format(pipe_type), emit_value2='doc.status')
+        
+        logging.info('Token type is '+self.t_type)
+        logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+'/_view/overview_total')
+        logging.info("Token settings are :")
+        for i in tok_settings.items():
+            logging.info(str(i))
 
-        pipe_type = token_variables['PIPELINE_STEP']
-        self.token_list = TokenList(database=self.db, token_type=self.t_type) 
-
+        self.tokens = token.TokenSet(th=th,tok_config=self.tok_config)
+        self.upload_tokens(self.tokens)
+        logging.debug(srms)
         if self.files_per_token != 1:
             d = slice_dicts(srms.sbn_dict(pref=self.subband_prefix, 
                                     suff=self.subband_suffix)
@@ -174,38 +135,29 @@ class TokenCreator(BaseOperator):
             d = {}
             for i in srms.sbn_dict(pref=self.subband_prefix, suff=self.subband_suffix):
                 d[i[0]] = i[1]
+        self.tokens.create_dict_tokens(iterable=d,
+                id_append=pipe_type,key_name='STARTSB',
+                file_upload='srm.txt')
+        self.tokens.add_keys_to_list("OBSID",srms.obsid)
         
-        for token_file in d: 
-            with NamedTemporaryFile(delete=False) as savefile: 
-                for line in d[token_file]: 
-                    savefile.write("{}\n".format(line).encode('utf-8'))
-            self.token_list.append(self.build_token(
-                                token_id="{}{}_{}".format(self.t_type,token_file,time.time()),
-                                attachment={'name':'srm.txt', 'location':savefile.name})) 
-            self.token_list[-1]['STARTSB'] = token_file 
-            os.remove(savefile.name) 
-        self.token_list.add_token_views()
-        if self.append_task:
-            self.modify_fields(context)
-        logging.info('Token type is '+self.t_type)
-        logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+'/_view/overview_total')
-        logging.info("Token settings are :")
-        for i in token_variables.items():
-            logging.info(str(i))
-
-        logging.debug(srms)
-
-        for token in self.token_list:
-            token["OBSID"]=srms.obsid
-        
-        self.token_list.save()
+        if 'CAL_OBSID' in tok_settings.keys():
+            task_name = self.srms_task['name']
+            task_parent_dag = self.srms_task['parent_dag']
+            cal_results = get_task_instance(context, task_name, task_parent_dag)
+            CAL_OBSID = cal_results['CAL_OBSID']
+            self.tokens.add_keys_to_list("CAL_OBSID",CAL_OBSID)
+        logging.info(str(self.sbx_task) )
+        task_name = self.sbx_task['name']
+        task_parent_dag = self.sbx_task['parent_dag']
+        sbx_xcom = get_task_instance(context, task_name, task_parent_dag)
+        sbx_name = sbx_xcom["SBX_location"]
+        self.tokens.add_keys_to_list('SBXloc',"gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/sandbox/"+sbx_name)
         results = dict()
         results['num_jobs'] = len(d.keys())
-        results['output_dir'] = token_variables['RESULTS_DIR']+"/"+ str(srms.obsid)
+        results['output_dir'] = tok_settings['RESULTS_DIR']+"/"+ str(srms.obsid)
         results['token_type'] = str(self.t_type)
         results['view'] = pipe_type
         results['OBSID'] = srms.obsid
-        results['token_ids'] = [i['_id'] for i in self.token_list]
         return results
 
     def upload_tokens(self,tokens):
@@ -214,27 +166,9 @@ class TokenCreator(BaseOperator):
     def upload_attachments(self,attachment):
         pass
 
-    def build_token(self, token_id, attachment=None):
-        t1 = caToken(database=self.db, token_type=self.t_type, token_id=token_id) 
-        t1.build(TokenJsonBuilder(self.tok_config))
-        t1.save() 
-        if attachment:
-            t1.add_attachment(attachment_name=attachment['name'],
-                              filename=attachment['location'])
-        return t1
-
-    def modify_fields(self, context):
-        """If the append_task exists, this moethod will add all key:value pairs
-        in its xcom to every token. This is used to for example take the results
-        of the calibration taks and name it 'CAL_RESULTS'"""
-        print(self.append_task)
-        append_xcom = get_task_instance(context, 
-                                        self.append_task['name'],
-                                        parent_dag= self.append_task['parent_dag'])
-        for k in append_xcom:
-            for token in self.token_list:
-                token[k] = append_xcom[k]
-        self.token_list.save()
+    def modify_fields(self,field_dict):
+        for k in field_dict.keys():
+            self.tokens.add_keys_to_list(k,field_dict[k])
 
     def get_staged_srms(self,context):
         task_name = self.staging_task['name']
@@ -244,13 +178,10 @@ class TokenCreator(BaseOperator):
         logging.info("Srmfile is "+srmfile)
         if srmfile == None:
             raise RuntimeError("Could not get the srm list from the "+str(self.staging_task) +" task")
-        return self.get_list_from_files(srmfile) 
-
-    def get_list_from_files(self, filename):
-        loaded_srmlist = srmlist()
-        for link in open(filename,'rb').readlines():
-            loaded_srmlist.append(link.decode('utf-8').strip('\n'))
-        return loaded_srmlist
+        self.srmlist = srmlist()
+        for link in open(srmfile,'rb').readlines():
+            self.srmlist.append(link.strip('\n'))
+        return self.srmlist
 
     def success(self):
         self.status = State.SUCCESS
@@ -312,10 +243,10 @@ class TokenUploader(BaseOperator):
         if self.pc_database:
             pc.database = self.pc_database
         tok_dict=context['task_instance'].xcom_pull(task_ids=self.token_task)
-        token_ids=tok_dict['token_ids']
-        token_type = tok_dict['token_type']
+        token_id=tok_dict['token_type']
+        view=tok_dict['view']
         filename=self.find_upload_file(context)
-        self.upload(token_ids, token_type, filename )
+        self.upload(token_id, view, filename )
 
     def find_upload_file(self, context):
         """ Checks whether the file exists (if fed a filename as a parameter)
@@ -333,18 +264,16 @@ class TokenUploader(BaseOperator):
             return parset_file_loc
         raise(Exception("Cannot find the parset file"))
 
-    def upload(self, token_ids, token_type, file_name):
+    def upload(self, token_id, view, file_name):
         pc=get_picas_credentials.picas_cred()
-        if self.pc_database:
+        if self.pc_database:                                                                                                                                                                                                                                                              
             pc.database = self.pc_database
-        client = CouchDB(pc.user,pc.password, url='https://picas-lofar.grid.surfsara.nl:6984',connect=True)
-        db=client[pc.database] 
-
-        tl=TokenList(token_type=token_type, database=db)
-        for t_id in  token_ids:
-            tl.append(caToken(database=db, token_type=token_type, token_id=t_id))
-        tl.fetch()
-        tl.add_attachment(file_name, file_name.split('/')[-1])
+        th=token.TokenHandler(t_type=token_id,
+                    uname=pc.user,pwd=pc.password,dbn=pc.database)
+        self.tokens=th.list_tokens_from_view(view)
+        for token in self.tokens:
+            th.add_attachment(token.id,open(file_name,'rb'),self.upload_file.split('/')[-1])
+        
 
     def success(self):
         self.status=State.SUCCESS

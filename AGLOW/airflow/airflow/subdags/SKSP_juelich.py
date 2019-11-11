@@ -1,6 +1,7 @@
 from airflow import DAG                                                                                                                     
 from airflow.operators.bash_operator import BashOperator
 from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
+from AGLOW.airflow.operators.LRT_Sandbox import LRTSandboxOperator
 from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
 from AGLOW.airflow.operators.LRT_submit import LRTSubmit
 from AGLOW.airflow.operators.data_staged import Check_staged
@@ -103,9 +104,9 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         dag=dag)
 
 
-    #sandbox_cal = LRTSandboxOperator(task_id='sbx',
-    #    sbx_config=args_dict['pref_cal1_cfg'],
-    #    dag=dag)
+    sandbox_cal = LRTSandboxOperator(task_id='sbx',
+        sbx_config=args_dict['pref_cal1_cfg'],
+        dag=dag)
         
 #Create the tokens and populate the srm.txt 
     tokens_cal = TokenCreator(task_id='token_cal',
@@ -127,9 +128,9 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         pc_database = 'sksp2juelich',
         dag=dag)
 
-    #sandbox_cal2 = LRTSandboxOperator(task_id='sbx_cal2',
-    #    sbx_config=args_dict['pref_cal2_cfg'],
-    #    dag=dag)
+    sandbox_cal2 = LRTSandboxOperator(task_id='sbx_cal2',
+        sbx_config=args_dict['pref_cal2_cfg'],
+        dag=dag)
      
     tokens_cal2 = TokenCreator( task_id='token_cal2',
         staging_task={'name':'check_calstaged','parent_dag':False},
@@ -149,10 +150,10 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         pc_database = 'sksp2juelich',
         dag=dag)
 
-    #sandbox_targ1 = LRTSandboxOperator(task_id='sbx_targ1',
-    #    sbx_config=args_dict['pref_targ1_cfg'],
-    #    trigger_rule='all_done',        # The task will start when parents are success or skipped 
-    #    dag=dag)
+    sandbox_targ1 = LRTSandboxOperator(task_id='sbx_targ1',
+        sbx_config=args_dict['pref_targ1_cfg'],
+        trigger_rule='all_done',        # The task will start when parents are success or skipped 
+        dag=dag)
         
     tokens_targ1 = TokenCreator( task_id='token_targ1',
         staging_task={'name':'check_targstaged','parent_dag':False},
@@ -209,25 +210,24 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
             dag=dag)
 
     branch_if_cal_exists >> check_calstaged
-    branch_if_cal_exists >> calib_done >> tokens_targ1
+    branch_if_cal_exists >> calib_done >>sandbox_targ1
 
 #checking if calibrator is staged
     check_calstaged >>  branching_cal
     branching_cal >> stage >> join
     branching_cal >> files_staged >> join
  
-    #join >> sandbox_cal 
-    join >> tokens_cal >> parset_cal >> tokens_cal2 >> parset_cal2
+    join >> sandbox_cal 
 
-    #sandbox_cal >> tokens_cal >> parset_cal >> sandbox_cal2 
-    #sandbox_cal2 >> tokens_cal2 >> parset_cal2 
+    sandbox_cal >> tokens_cal >> parset_cal >> sandbox_cal2 
+    sandbox_cal2 >> tokens_cal2 >> parset_cal2 
 
     check_targstaged >> branch_targ_if_staging_needed
 
     branch_targ_if_staging_needed >> files_staged_targ >> join_targ
     branch_targ_if_staging_needed >> stage_targ >> join_targ
 
-    #join_targ >> sandbox_targ1 
-    join_targ >> tokens_targ1
-    parset_cal2 >> tokens_targ1 >> parset_targ1 >> check_done_files
+    join_targ >> sandbox_targ1 
+
+    parset_cal2 >> sandbox_targ1 >> tokens_targ1 >> parset_targ1 >> check_done_files
     return dag

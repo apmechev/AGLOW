@@ -1,17 +1,25 @@
 import os
+import subprocess
+import fileinput
+import logging
+from datetime import datetime, timedelta
+
+
 from airflow import DAG
 from airflow.operators.bash_operator import BashOperator
-from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
-from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
-from AGLOW.airflow.operators.LRT_submit import LRTSubmit 
-from AGLOW.airflow.operators.data_staged import Check_staged
-from AGLOW.airflow.sensors.glite_wms_sensor import gliteSensor
-from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
 from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.dummy_operator import DummyOperator
-from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist 
 from airflow.models import Variable
+
+#Import AGLOW operators
+from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
+from AGLOW.airflow.operators.LRT_Sandbox import LRTSandboxOperator
+from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
+from AGLOW.airflow.operators.LRT_submit import LRTSubmit 
+from AGLOW.airflow.operators.data_staged import Check_staged
+from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist 
+from AGLOW.airflow.sensors.glite_wms_sensor import gliteSensor
 
 #Import helper fucntions 
 from AGLOW.airflow.utils.AGLOW_utils import get_next_field
@@ -26,23 +34,15 @@ from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
 from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
 from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task 
-#from airflow.utils.AGLOW_utils import archive_tokens_from_task
+
+#Import GRID_LRT helpers
 from GRID_LRT.Staging import state_all
-
-
 from GRID_LRT.Staging.srmlist import srmlist
-from GRID_LRT import token
-from GRID_LRT.auth.get_picas_credentials import picas_cred
-import subprocess
-import  fileinput
-import logging
-import pdb
+from GRID_LRT import Token
+from GRID_LRT.get_picas_credentials import picas_cred
 
-def test_check_staged(srm_variable, **context):
-    srmfile = Variable.get(srm_variable)
-    logging.info(state_all.__file__)
-#    file_statuses = state_all.main(srmfile, verbose=False)
-    return {'staged':False,'srmfile':str(srmfile)}
+
+
 
 #TODO: This fails!
 
@@ -57,7 +57,7 @@ def archive_tokens_from_task(token_task, delete=False, **context):
 
 def archive_all_tokens(token_type, archive_location, delete=False):
     pc = picas_cred()
-    th = token.TokenHandler(t_type=token_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
+    th = Token.Token_Handler(t_type=token_type, uname=pc.user, pwd=pc.password, dbn=pc.database)
     token_archive = th.archive_tokens(delete_on_save=delete, compress=True)
     logging.info("Archived tokens from " + token_type + " and made an archive: " + token_archive)
     logging.info(token_archive + " size is " + str(os.stat(token_archive).st_size))
@@ -66,112 +66,125 @@ def archive_all_tokens(token_type, archive_location, delete=False):
 
     
 
-def calibrator_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
+def target_subdag(parent_dag_name, subdagname,dag_args, args_dict=None):
     field_name = 'fields_'
     #Resetting variables (They are set by get_srmfiles)
     
     dag = DAG(dag_id=parent_dag_name+'.'+subdagname, default_args=dag_args, schedule_interval='@once' , catchup=False)
     if not args_dict:
         args_dict = { 
-            "cal1_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-1.parset", 
-            "cal2_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset", 
-            'pref_cal1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_cal1.cfg',
-            'pref_cal2_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_cal2.cfg'
+            "targ1_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Target-1.parset", 
+            "targ2_parset":"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/parsets/Pre-Facet-Target-2.parset", 
+            'pref_targ1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_targ1.cfg',
+            'pref_targ2_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_targ2.cfg'
             }
 
     #Create a sandbox for the job
-    sandbox_cal = LRTSandboxOperator(task_id='sbx',
-            sbx_config=args_dict['pref_cal1_cfg'],
+    sandbox_targ = LRTSandboxOperator(task_id='sbx',
+            sbx_config=args_dict['pref_targ1_cfg'],
             dag=dag)
     
     #Create the tokens and populate the srm.txt 
-    tokens_cal = TokenCreator(task_id='token_cal',
-            sbx_task={'name':'sbx', 'parent_dag':False},
-            staging_task ={'name':'check_calstaged', 'parent_dag':True},
+    tokens_targ = TokenCreator(task_id='token_targ',
+            sbx_task={'name':'sbx','parent_dag':False},
+            staging_task ={'name':'check_targstaged','parent_dag':True},
+            srms_task={'name':'get_srmfiles','parent_dag':True},
             token_type=field_name,
-            tok_config =args_dict['pref_cal1_cfg'],
+            tok_config =args_dict['pref_targ1_cfg'],
             files_per_token=1,
             dag=dag)
     
     #Upload the parset to all the tokens
-    parset_cal = TokenUploader(task_id='cal_parset', 
-            token_task='token_cal',
-            upload_file=args_dict['cal1_parset'],
+    parset_targ = TokenUploader(task_id='targ_parset', 
+            token_task='token_targ',
+            upload_file=args_dict['targ1_parset'],
             parset_task = 'make_parsets',
             parent_dag = True,
             dag=dag)
     
     
     #Submit tokens to the GRID
-    submit_cal = LRTSubmit(task_id='submit',
-            token_task='token_cal',
+    submit_targ = LRTSubmit(task_id='submit',
+            token_task='token_targ',
             parameter_step=1,
             NCPU=2,
             dag=dag)
     
     #Wait for all jobs to finish
-    wait_for_run_cal = gliteSensor(task_id='running',
+    wait_for_run_targ = gliteSensor(task_id='running',
             submit_task='submit',
             success_threshold=0.95,
             poke_interval=120,
             dag=dag)
         
-    cal1_files_done = PythonOperator(
-            task_id = 'cal1_files_done',
+    targ1_files_done = PythonOperator(
+            task_id = 'targ1_files_done',
             python_callable = check_folder_for_files_from_task,
-            op_args = ['token_cal','output_dir', 230],
+            op_args = ['token_targ','output_dir', 230],
             dag=dag
             )
     #####################################
-    #######Calibrator 2 block
+    #######Target 2 block
     #####################################
     
-    sandbox_cal2 = LRTSandboxOperator(task_id='sbx_cal2', 
-            sbx_config=args_dict['pref_cal2_cfg'],
+    sandbox_targ2 = LRTSandboxOperator(task_id='sbx_targ2', 
+            sbx_config=args_dict['pref_targ2_cfg'],
+            dag=dag)
+   
+    targ2_srmlist_from_storage = Storage_to_Srmlist(task_id='srmlist_from_targ1',
+              token_task='token_targ',
+              dag=dag)
+
+    tokens_targ2 = TokenCreator( task_id='token_targ2',
+            staging_task={'name':'srmlist_from_targ1','parent_dag':False},
+            sbx_task={'name':'sbx_targ2','parent_dag':False},
+            token_type=field_name,                                                                           
+            files_per_token=10,
+            subband_prefix='AB',
+            tok_config=args_dict['pref_targ2_cfg'],
             dag=dag)
     
-    tokens_cal2 = TokenCreator( task_id='token_cal2',
-            staging_task={'name':'check_calstaged','parent_dag':True},
-            sbx_task={'name':'sbx_cal2','parent_dag':False},
-            token_type=field_name,
-            files_per_token=999,
-            tok_config=args_dict['pref_cal2_cfg'],
-            dag=dag)
-    
-    parset_cal2 = TokenUploader( task_id='cal_parset2',
-            token_task='token_cal2',
-            upload_file=args_dict['cal2_parset'],
+    parset_targ2 = TokenUploader( task_id='targ_parset2',
+            token_task='token_targ2',
+            upload_file=args_dict['targ2_parset'],
             parset_task = 'make_parsets',
             parent_dag = True,
             dag=dag)
     
-    submit_cal2 = LRTSubmit( task_id='submit_cal2',
-            token_task='token_cal2',
+    submit_targ2 = LRTSubmit( task_id='submit_targ2',
+            token_task='token_targ2',
             parameter_step=1, 
             NCPU=5,
             dag=dag)
     
-    wait_for_run_cal2 = gliteSensor( task_id='running_cal2',
-            submit_task='submit_cal2',
+    wait_for_run_targ2 = gliteSensor( task_id='running_targ2',
+            submit_task='submit_targ2',
             success_threshold=0.9,
             poke_interval=120,
             dag=dag)
-    
-    archive_cal2 = PythonOperator(
-            task_id = 'archive_cal2',
+
+    all_files_done = PythonOperator(
+        task_id = 'all_files_done',
+        python_callable = check_folder_for_files_from_task,
+        op_args = ['token_targ2','output_dir', None],
+        dag=dag
+        )
+
+    archive_targ2 = PythonOperator(
+            task_id = 'archive_targ2',
             provide_context=True, 
             python_callable=archive_tokens_from_task,
-            op_args=['token_cal2'],
+            op_args=['token_targ2'],
             dag = dag)
      
 
     ## Setting up the dependency graph of the workflow
     
     
-    #Branch if calibrator already processed
+    #Branch if targibrator already processed
 
-    sandbox_cal >> tokens_cal >> parset_cal >>  submit_cal >> wait_for_run_cal
-    wait_for_run_cal >> cal1_files_done >> sandbox_cal2 >> tokens_cal2 >> parset_cal2 >> submit_cal2 >> wait_for_run_cal2
+    sandbox_targ >> tokens_targ >> parset_targ >>  submit_targ >> wait_for_run_targ
+    wait_for_run_targ >> targ1_files_done >> targ2_srmlist_from_storage >> sandbox_targ2 >> tokens_targ2 >> parset_targ2 >> submit_targ2 >> wait_for_run_targ2
     
-    wait_for_run_cal2 >> archive_cal2 
+    wait_for_run_targ2 >> all_files_done >> archive_targ2 
     return dag

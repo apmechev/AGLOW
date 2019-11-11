@@ -1,11 +1,11 @@
-from airflow import DAG
+
 
 from airflow.operators.python_operator import BranchPythonOperator
 from airflow.operators.dummy_operator import DummyOperator
 
 from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
 from AGLOW.airflow.operators.data_staged import Check_staged
-from AGLOW.airflow.utils.AGLOW_utils import stage_if_needed
+
 
 def check_staged_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
     dag = DAG(dag_id=parent_dag_name+"."+subdagname, default_args=dag_args, schedule_interval="@once", catchup=False)

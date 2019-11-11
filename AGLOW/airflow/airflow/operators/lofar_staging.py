@@ -22,6 +22,7 @@ import logging
 from subprocess import Popen, STDOUT, PIPE
 from tempfile import gettempdir, NamedTemporaryFile
 
+
 from airflow.exceptions import AirflowException
 from airflow.models import BaseOperator
 from airflow.utils.decorators import apply_defaults
@@ -32,14 +33,14 @@ from GRID_LRT.Staging import srmlist
 from AGLOW.airflow.utils.AGLOW_utils import get_var_from_task_decorator
 from airflow.models import Variable
 
-from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
-
 try:
     import xmlrpclib
     from xmlrpclib import ResponseError
+    from xmlrpclib import Fault as xmlrpcFault
 except ImportError:
     import xmlrpc as xmlrpclib
     from xmlrpc.client import ResponseError
+    from xmlrpc.client import Fault as xmlrpcFault
 
 
 class LOFARStagingOperator(BaseOperator):
@@ -65,14 +66,12 @@ class LOFARStagingOperator(BaseOperator):
             srmfile="",
             srms=None,
             stageID=None,
-            srmkey=None,
             output_encoding='utf-8',
             *args, **kwargs):
 
         super(LOFARStagingOperator, self).__init__(*args, **kwargs)
         self.srmfile = srmfile
         self.srms = srms
-        self.srmkey = srmkey
         self.output_encoding = output_encoding
         self.state=State.QUEUED
         self.pass_threshold=0.95 #At least 95% need to be staged to continue.
@@ -82,13 +81,7 @@ class LOFARStagingOperator(BaseOperator):
         """
         Executes the staging command from the list of srms requested.
         """
-        if isinstance(self.srmfile,dict):
-            task_name = self.srmfile['name']
-            task_parent_dag = self.srmfile['parent_dag']
-            sbx_xcom = get_task_instance(context, task_name, task_parent_dag)
-            self.srmfile = sbx_xcom[self.srmkey]
-
-        elif not os.path.isfile(self.srmfile) and not hasattr(self.srms, '__iter__'):
+        if not os.path.isfile(self.srmfile) and not hasattr(self.srms, '__iter__'):
             self.srmfile=Variable.get(self.srmfile)
             if not os.path.isfile(self.srmfile):
                 self.status=State.UPSTREAM_FAILED
@@ -99,7 +92,7 @@ class LOFARStagingOperator(BaseOperator):
         self.surl_list=self.build_srm_list(surl_list)
         try:
             self.stage_ID=stager_access.stage(list(self.surl_list))
-        except xmlrpclib.Fault : 
+        except xmlrpcFault : 
             sleep(60)
             self.stage_ID=stager_access.stage(list(self.surl_list))
         logging.info("Successfully sent staging command for " + 
@@ -116,7 +109,7 @@ class LOFARStagingOperator(BaseOperator):
         self.started=False
         f=NamedTemporaryFile(delete=False)
         for i in surl_list:
-            f.write(bytes(i, encoding='utf8'))
+            f.write(i)
         f.close()
         if not f:
             f.name=""
@@ -208,4 +201,5 @@ class LOFARStagingOperator(BaseOperator):
 
     def on_kill(self):
         logging.warn('Sending SIGTERM signal to staging group')
-        logging.warn("Process killed")
+        self.state=State.SHUTDOWN
+        os.killpg(os.getpgid(self.sp.pid), signal.SIGTERM) 

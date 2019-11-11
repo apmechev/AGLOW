@@ -116,7 +116,7 @@ class LOFARStagingOperator(BaseOperator):
         self.started=False
         f=NamedTemporaryFile(delete=False)
         for i in surl_list:
-            f.write(bytes(i, encoding='utf8'))
+            f.write(i)
         f.close()
         if not f:
             f.name=""

@@ -14,7 +14,6 @@ from airflow.models import Variable
 
 #Import AGLOW operators
 from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
-from AGLOW.airflow.operators.LRT_Sandbox import LRTSandboxOperator
 from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
 from AGLOW.airflow.operators.LRT_submit import LRTSubmit 
 from AGLOW.airflow.operators.data_staged import Check_staged
@@ -38,8 +37,8 @@ from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task
 #Import GRID_LRT helpers
 from GRID_LRT.Staging import state_all
 from GRID_LRT.Staging.srmlist import srmlist
-from GRID_LRT import Token
-from GRID_LRT.get_picas_credentials import picas_cred
+from GRID_LRT import token
+from GRID_LRT.auth.get_picas_credentials import picas_cred
 
 
 

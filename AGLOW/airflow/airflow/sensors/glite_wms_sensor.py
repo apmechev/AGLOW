@@ -60,7 +60,7 @@ class gliteSensor(BaseSensorOperator):
             raise RuntimeError("Could not get the jobID from the "+str(self.submit_task)+" task. ")
         logging.info('Poking glite job: ' + self.jobID)
         g_proc = subprocess.Popen(['glite-wms-job-status', self.jobID] ,
-                stdout=subprocess.PIPE, stderr=subprocess.PIPE, encoding="utf-8")
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         g_result=g_proc.communicate() 
         self.parse_glite_jobs(g_result[0])
         if not 'Done' in self.job_status:
@@ -79,7 +79,7 @@ class gliteSensor(BaseSensorOperator):
     def parse_glite_jobs(self,jobs): 
         try:
             self.job_status=jobs.split('Current Status:')[1].split()[0]
-        except IndexError:
+        except:
             logging.info(jobs)
         logging.debug("Current job status is "+str(self.job_status))
         if self.glite_status== 'Running': 
