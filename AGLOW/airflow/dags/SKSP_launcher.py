@@ -5,6 +5,7 @@ import  fileinput
 import logging
 import pdb
 import datetime as dt
+import tempfile
 
 from airflow import DAG
 from airflow.models import Variable
@@ -16,13 +17,16 @@ from airflow.operators.subdag_operator import SubDagOperator
 from airflow.operators.dummy_operator import DummyOperator
 
 from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
+from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
 from AGLOW.airflow.operators.data_staged import Check_staged
+from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist
 
 from AGLOW.airflow.subdags.SKSP_calibrator import calibrator_subdag
 from AGLOW.airflow.subdags.SKSP_target import target_subdag
 from AGLOW.airflow.subdags.SKSP_juelich import juelich_subdag
 from AGLOW.airflow.subdags.stage_subdag import test_state_subdag
 
+from AGLOW.airflow.subdags.gridjob   import grid_subdag
 #Import helper fucntions 
 from AGLOW.airflow.utils.AGLOW_MySQL_utils import SurveysDB
 from AGLOW.airflow.utils.AGLOW_MySQL_utils import update_field_status_from_taskid
@@ -31,6 +35,7 @@ from AGLOW.airflow.utils.AGLOW_MySQL_utils import get_next_pref
 from AGLOW.airflow.utils.AGLOW_MySQL_utils import get_AGLOW_field_properties
 from AGLOW.airflow.utils.AGLOW_utils import count_files_uberftp 
 from AGLOW.airflow.utils.AGLOW_utils import count_grid_files
+from AGLOW.airflow.utils.AGLOW_utils import copy_to_archive
 from AGLOW.airflow.utils.AGLOW_utils import stage_if_needed
 from AGLOW.airflow.utils.AGLOW_utils import get_next_field
 from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_taskid
@@ -40,21 +45,24 @@ from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
 from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
 from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task 
+from AGLOW.airflow.utils.AGLOW_utils import get_results_from_subdag
 
-import GRID_LRT
+
+from GRID_LRT.storage import gsifile
 
 
 default_args = {
-    'owner': 'apmechev',
+    'owner': 'zmz',
     'depends_on_past': False,
     'start_date': dt.datetime(2018, 8, 1),
-    'email': ['apmechev@gmail.com'],
-    'email_on_failure': False, 
+    'email': [], #['shimwell@astron.nl','apmechev@gmail.com','sarrvesh@astron.nl','franzen@astron.nl'],
+    'email_on_failure': True, 
     'email_on_retry': False,
     'retries': 0,
     'retry_delay': timedelta(minutes=5),
     'provide_context': True,
-    'run_as_user': 'apmechev'
+    'run_as_user': 'zmz',
+    'concurrency':12
     # 'queue': 'bash_queue',
     # 'pool': 'backfill',
     # 'priority_weight': 10,
@@ -62,47 +70,59 @@ default_args = {
 }
 
 
-dag = DAG('SKSP_Launcher', default_args=default_args, schedule_interval='0 */24 * * *' , catchup=False)
-
-data_directory = "/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/"
-
-if not os.path.isdir(data_directory):
-    data_directory = GRID_LRT.__file__.split('__init__.py')[0]+"/data/"
-
-args_dict = { 
-            "cal1_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-1.parset",
-            "cal2_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-2.parset",
-            'pref_cal1_cfg' : data_directory+"config/steps/pref_cal1.cfg",
-            'pref_cal2_cfg' : data_directory+"config/steps/pref_cal2.cfg",
-            "targ1_parset"  : data_directory+"parsets/Pre-Facet-Target-1.parset",
-            "targ2_parset"  : data_directory+"parsets/Pre-Facet-Target-2.parset",
-            'pref_targ1_cfg': data_directory+"config/steps/pref_targ1.cfg",
-            'pref_targ2_cfg': data_directory+"config/steps/pref_targ2.cfg"
-            }
-
+dag = DAG('SKSP_Launcher', default_args=default_args, schedule_interval='@once' , catchup=False)
 
 args_dict_juelich = {
-                "cal1_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-1.parset",
-                "cal2_parset"   : data_directory+"parsets/Pre-Facet-Calibrator-2.parset",
-                "targ1_parset"  : data_directory+"parsets/Pre-Facet-Target-1.parset",
-                'pref_cal1_cfg' : data_directory+"config/steps/pref_cal1_juelich.cfg",
-                'pref_cal2_cfg' : data_directory+"config/steps/pref_cal2.cfg",
-                'pref_targ1_cfg': data_directory+"config/steps/pref_targ1.cfg"}
+                "cal1_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Calibrator-1.parset",
+                "cal2_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset",
+                "targ1_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Target-1.parset",
+                'pref_cal1_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_cal1_juelich.cfg',
+                'pref_cal2_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_cal2.cfg',
+                'pref_targ1_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_targ1.cfg'}
 
-#Resetting variables (They are set by get_srmfiles)
 
-orig_parsets = { 
-        "Pre-Facet-Calibrator-1.parset":data_directory+"parsets/Pre-Facet-Calibrator-1.parset", 
-        "Pre-Facet-Calibrator-2.parset":data_directory+"parsets/Pre-Facet-Calibrator-2.parset",
-        "Pre-Facet-Target-1.parset" : data_directory+'parsets/Pre-Facet-Target-1.parset',
-        "Pre-Facet-Target-2.parset" : data_directory+'parsets/Pre-Facet-Target-2_fields.parset'
-        }
-time_avg = 8
-freq_avg = 2
+args_cal = {'attachments':
+                         [("Pre-Facet-Calibrator-v3.parset",
+                           "/home/zmz/AGLOW/data/parsets/Pre-Facet-Calibrator-v3.parset")],
+            'cfg':'/home/zmz/AGLOW/data/config/steps/cal_pref3.json',
+            'files_per_job':999,
+            'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
+            'append_task':None,         #We are not adding keys to the tokens, so this is None
+            'field_prefix': "CI_pref",
+            'srmfile_task': 'stage_cal',
+            'subband_prefix':None,
+            'NCPU' : 4
+            }
 
+args_targ1 ={'attachments':
+                         [("Pre-Facet-Target1-v3.parset",
+                           "/home/zmz/AGLOW/data/parsets/CI/Pre-Facet-Target1-v3.parset")],
+            'cfg':'/home/zmz/AGLOW/data/config/steps/targ1_pref3.json',
+            'files_per_job':1,
+            'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
+            'field_prefix': "CI_pref",
+            'append_task':{'name':'cal_results','parent_dag':True},
+            'srmfile_task': 'stage_targ',
+            'subband_prefix':None,
+            'NCPU' : 2 }
+
+args_targ2 = {'attachments':
+                         [("Pre-Facet-Target2-v3.parset",
+                           "/home/zmz/AGLOW/data/parsets/Pre-Facet-Target2-v3.parset")],
+            'cfg':'/home/zmz/AGLOW/data/config/steps/targ2_pref3.json',
+            'files_per_job':10,
+            'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
+            'field_prefix': "CI_pref",
+            'append_task':None,
+            'srmfile_task': 'targ1_results',
+            'subband_prefix':'ABN',
+            'NCPU' : 2 }
 
 def get_dummy_field(**context):
     return {"field_name":"P252_35"}
+
+def fail_dag(**kwargs):
+    raise RuntimeError("An (important) upstream task failed")
 
 def dummy_field_props(_,**context):
     return{
@@ -112,24 +132,24 @@ def dummy_field_props(_,**context):
 def select_LTA_location(get_LTA_task,sara_task,juelich_task,**context):
     location = context['task_instance'].xcom_pull(task_ids=get_LTA_task)
     logging.info(location)
-    if location == 'sara':
+    if location == 'sara' or location == 'poznan':
         return sara_task
     if location == 'juelich':
         return juelich_task
 
-params={
-    'LRT_config_file': '/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/NDPPP_parset.cfg',
-    'srmfile':"/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/tests/srm_50_sara.txt",
-    'NDPPP_parset':'/home/apmechev/AGLOW/NDPPP.parset'
-        }
-
-
-#test_subdag = SubDagOperator(
-#        task_id = 'test_staging_subdag',
-#        subdag = test_state_subdag('SKSP_Launcher','test_staging_subdag', default_args, args_dict=params),
-#        dag=dag
-#        )
-
+def make_srmlist_from_results(task="tokens", results_subdag=None, key='Results_location', **context):
+    if results_subdag:
+        results_list = get_results_from_subdag(subdag_id=results_subdag, task=task, key=key, **context)[key]
+    else:
+        task_output = get_task_instance(context, task)
+        results_list = task_output[key]
+    if isinstance(results_list,str):
+        results_list=[results_list]
+    tmp_prefix = os.environ['AIRFLOW_HOME']+'/tmpfiles/'
+    with tempfile.NamedTemporaryFile(mode='wb',delete=False, prefix=tmp_prefix)  as srmf:
+        for line in results_list:
+            srmf.write(bytearray("{}\n".format(line).encode('utf-8')))
+    return {'srmfile': srmf.name}
 
 get_next_field = PythonOperator(
         task_id = 'get_next_field',
@@ -159,13 +179,6 @@ get_srmfiles = PythonOperator(
         op_args = ['/home/timshim/GRID_LRT3/GRID_LRT/SKSP/srmfiles/','get_field_properties'],
         dag = dag)
 
-make_parsets = PythonOperator(
-        task_id = 'make_parsets',
-        provide_context = True,
-        python_callable = modify_parset_from_fields_task,
-        op_args = [orig_parsets, 'get_field_properties', time_avg, freq_avg],
-        dag = dag
-        )
 
 get_LTA_location = PythonOperator(
         task_id = 'get_LTA_location',
@@ -199,7 +212,7 @@ branch_if_cal_exists = BranchPythonOperator(
     provide_context = True,                   # Allows to access returned values from other tasks
     python_callable = count_from_task,      
     op_args = ['get_srmfiles', 'cal_srmfile', 'check_calstaged', 'cal_done_already',
-        "SKSP",'pref_cal2',1,False],         
+        "SKSP/prefactor_v3.0",'pref_cal',1,False],         
     dag = dag)
     
 
@@ -242,7 +255,8 @@ join_cal = DummyOperator(task_id='join_cal',
         
 #Stage the files from the srmfile
 stage = LOFARStagingOperator( task_id='stage_cal',
-            srmfile="SKSP_Prod_Calibrator_srm_file",
+        srmfile={'name':"get_srmfiles",'parent_dag':False},
+        srmkey = 'cal_srmfile',
             dag=dag)
 
 check_calstaged = Check_staged( task_id='check_calstaged' ,
@@ -258,10 +272,15 @@ check_calstaged = Check_staged( task_id='check_calstaged' ,
 
 launch_sara_calibrator = SubDagOperator(
         task_id = 'launch_sara_calibrator',
-        subdag = calibrator_subdag('SKSP_Launcher','launch_sara_calibrator', default_args, args_dict=args_dict),
-        email_on_failure=True,
-        email='apmechev@gmail.com',
+        subdag = grid_subdag('SKSP_Launcher','launch_sara_calibrator', default_args, args_dict=args_cal),
         dag=dag
+        )
+
+   
+juelich_dummy = DummyOperator(
+    task_id='juelich_dummy',
+    trigger_rule='all_success',
+    dag=dag
         )
 
 branch_targ_if_staging_needed = BranchPythonOperator(  
@@ -281,9 +300,17 @@ join_targ = DummyOperator(
     trigger_rule='one_success',
     dag=dag
 )   
-     
+
+#This task gets the "Results_location" key from the tokens created in
+#CI_prefactor.launch_cal
+cal_results = PythonOperator(task_id='cal_results',
+        python_callable=get_results_from_subdag,
+        op_kwargs={'subdag_id':'SKSP_Launcher.launch_sara_calibrator', 'task':'tokens', 'return_key':'CAL2_SOLUTIONS'},
+        dag=dag)
+ 
 stage_targ= LOFARStagingOperator( task_id='stage_targ',
-        srmfile="SKSP_Prod_Target_srm_file",
+        srmfile={'name':"get_srmfiles", 'parent_dag':False},
+        srmkey = 'targ_srmfile',
         dag=dag)
     
 #check_targstaged = Check_staged( task_id='check_targstaged' ,
@@ -299,23 +326,61 @@ check_targstaged = Check_staged( task_id='check_targstaged' ,
 
 launch_sara_target = SubDagOperator(
         task_id = 'launch_sara_target',
-        subdag = target_subdag('SKSP_Launcher','launch_sara_target', default_args, args_dict=args_dict),
+        subdag = grid_subdag('SKSP_Launcher','launch_sara_target', default_args, args_dict=args_targ1),
+        dag=dag
+        )
+targ1_results =  PythonOperator(task_id='targ1_results',
+        python_callable=make_srmlist_from_results,
+        op_kwargs={'results_subdag':'SKSP_Launcher.launch_sara_target', 'task':'tokens'},
+        dag=dag)
+
+
+launch_target2 = SubDagOperator(
+        task_id = 'launch_target2',
+        subdag = grid_subdag('SKSP_Launcher','launch_target2', default_args, args_dict=args_targ2),
         dag=dag
         )
 
+sara_targ_dummy = DummyOperator(
+        task_id='sara_targ_dummy',
+        trigger_rule='one_success',
+        dag=dag)
+
+failure = PythonOperator(
+        task_id='failure',
+        python_callable=fail_dag,
+        trigger_rule='one_failed',
+        dag=dag
+        )
+
+copy_to_archive_task = PythonOperator(
+        task_id='copy_to_archive',
+        python_callable=copy_to_archive, 
+        provide_context=True,
+        dag=dag
+        )
 targ_processed = PythonOperator(
         task_id = 'targ_processed',
         provide_context = True,
         python_callable = update_OBSID_status_from_taskid,
-        trigger_rule='one_success',
+        trigger_rule='all_done',
         op_args = ['get_next_field','get_field_properties',  'DI_Processed'],
         dag = dag)
+
+
+targ_archived = PythonOperator(
+        task_id = 'targ_arhived',
+        provide_context = True,
+        python_callable = update_OBSID_status_from_taskid,
+        trigger_rule='all_done',
+        op_args = ['get_next_field','get_field_properties',  'Archived'],
+        dag = dag)
+
 
 launch_juelich = SubDagOperator(
         task_id = 'launch_juelich',
         subdag = juelich_subdag('SKSP_Launcher','launch_juelich', default_args, args_dict=args_dict_juelich),
-        email_on_failure=True,
-        email='apmechev@gmail.com',
+        pool='test_juelich_pool',
         dag=dag
         )
 
@@ -323,7 +388,7 @@ launch_juelich = SubDagOperator(
 
 
 #Branch if calibrator already processed
-get_next_field >> get_field_properties >> start_field >> make_parsets >> get_srmfiles 
+get_next_field >> get_field_properties >> start_field >> get_srmfiles 
 
 get_srmfiles >>  get_LTA_location  
 
@@ -331,21 +396,28 @@ get_LTA_location >>  launch_at_lta_location
 launch_at_lta_location >> launch_at_sara
 launch_at_lta_location >> launch_at_juelich
 
-launch_at_juelich >> launch_juelich
+launch_at_juelich >> launch_juelich 
 launch_at_sara  >> branch_if_cal_exists >> cal_done_already >> join_cal >> calib_done
 
 branch_if_cal_exists >> check_calstaged >> branching_cal
 branching_cal >> files_staged >> join 
 branching_cal >> stage >> join 
 
-join >> launch_sara_calibrator >> join_cal 
+launch_sara_calibrator >> join_cal
+
+join >> launch_sara_calibrator >> failure
+
+launch_juelich >>failure
 
 launch_at_sara >> check_targstaged >> branch_targ_if_staging_needed 
 branch_targ_if_staging_needed >> files_staged_targ >> join_targ
 branch_targ_if_staging_needed >>stage_targ >> join_targ
 
 join_targ >> launch_sara_target
-calib_done >> launch_sara_target
-launch_sara_target >> targ_processed 
+calib_done >> cal_results >> launch_sara_target >> targ1_results >> launch_target2
+launch_target2 >> sara_targ_dummy >> targ_processed 
+launch_target2 >> failure 
 
-launch_juelich >> targ_processed
+launch_juelich>> juelich_dummy >> targ_processed
+
+targ_processed >> copy_to_archive_task >> targ_archived

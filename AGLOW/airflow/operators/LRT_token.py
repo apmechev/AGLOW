@@ -110,8 +110,8 @@ class TokenCreator(BaseOperator):
             append_task = None, 
             fields_task = None,
             pc_database=None,
-            subband_prefix = None,
-            subband_suffix = None,
+            subband_prefix = "SB",
+            subband_suffix = "_",
             token_type = 'test_',
             files_per_token = 10,
 
@@ -122,14 +122,8 @@ class TokenCreator(BaseOperator):
         self.pc_database = pc_database
         self.tok_config  = tok_config  
         self.fields_task = fields_task
-        if subband_prefix:
-            self.subband_prefix = subband_prefix
-        else:
-            self.subband_prefix = "SB"
-        if subband_suffix:
-            self.subband_suffix = subband_suffix
-        else:
-            self.subband_suffix = "_"
+        self.subband_prefix = subband_prefix
+        self.subband_suffix = subband_suffix
         self.staging_task = staging_task
         self.append_task = append_task
         self.files_per_token = files_per_token
@@ -145,6 +139,7 @@ class TokenCreator(BaseOperator):
         srms = self.get_staged_srms(context)
         if not srms:
             logging.warn("Could not get the list of staged srms!")
+        logging.info("the list of staged srms is {0}".format(srms))
         pc = get_picas_credentials.picas_cred()
         if self.pc_database:
             pc.database = self.pc_database
@@ -176,16 +171,23 @@ class TokenCreator(BaseOperator):
                 d[i[0]] = i[1]
         
         for token_file in d: 
+            logging.info(token_file) 
             with NamedTemporaryFile(delete=False) as savefile: 
                 for line in d[token_file]: 
                     savefile.write("{}\n".format(line).encode('utf-8'))
+            token_id="{}{}_{}".format(self.t_type,token_file,time.time())
+            logging.info(token_id)
             self.token_list.append(self.build_token(
-                                token_id="{}{}_{}".format(self.t_type,token_file,time.time()),
+                                 token_id,
+#                                token_id="{}{}_{}".format(self.t_type,token_file,time.time()),
                                 attachment={'name':'srm.txt', 'location':savefile.name})) 
             self.token_list[-1]['STARTSB'] = token_file 
             os.remove(savefile.name) 
         self.token_list.add_token_views()
+
         if self.append_task:
+            logging.info(self.append_task)
+            logging.info(context)
             self.modify_fields(context)
         logging.info('Token type is '+self.t_type)
         logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+'/_view/overview_total')
@@ -217,6 +219,7 @@ class TokenCreator(BaseOperator):
     def build_token(self, token_id, attachment=None):
         t1 = caToken(database=self.db, token_type=self.t_type, token_id=token_id) 
         t1.build(TokenJsonBuilder(self.tok_config))
+        logging.info(self.tok_config)
         t1.save() 
         if attachment:
             t1.add_attachment(attachment_name=attachment['name'],
@@ -231,6 +234,9 @@ class TokenCreator(BaseOperator):
         append_xcom = get_task_instance(context, 
                                         self.append_task['name'],
                                         parent_dag= self.append_task['parent_dag'])
+        if append_xcom is None:
+            logging.info("No calibration results found!")
+
         for k in append_xcom:
             for token in self.token_list:
                 token[k] = append_xcom[k]

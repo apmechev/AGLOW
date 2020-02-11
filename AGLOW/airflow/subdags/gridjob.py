@@ -74,13 +74,15 @@ def grid_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
     
     #Create the tokens and populate the srm.txt 
     tokens = TokenCreator(task_id='tokens',
-            staging_task ={'name':args_dict['srmfile_task'], 'parent_dag':True},
-            append_task = args_dict['append_task'],
+            staging_task={'name':args_dict['srmfile_task'], 'parent_dag':True},
+            append_task=args_dict['append_task'],
             token_type=args_dict['field_prefix'],
-            tok_config =args_dict['cfg'],
+            tok_config=args_dict['cfg'],
+            subband_prefix=args_dict['subband_prefix'], 
             files_per_token=args_dict['files_per_job'],
             dag=dag)
-    
+    logging.info("Tokens created for subdag " + subdagname)   
+ 
     #Upload the parset to all the tokens
     if 'attachments' in args_dict.keys():
         for i in args_dict['attachments']:

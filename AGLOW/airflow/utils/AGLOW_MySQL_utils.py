@@ -41,7 +41,8 @@ def get_next_observation():
     # return the name of the top-priority field with appropriate status
     sdb=SurveysDB(readonly=True)
 #    sdb.cur.execute('select fields.id as id,sum(integration) as s,count(observations.id) as c,fields.priority from fields left join observations on (observations.field=fields.id) where fields.status="Not started" and observations.status="DI_processed" group by fields.id having s>7 order by fields.priority desc,ra')
-    sdb.cur.execute('select observations.id,observations.field,fields.priority,observations.priority from observations left join fields on (observations.field=fields.id) where observations.status="Observed" order by fields.priority desc,observations.priority desc')
+    #sdb.cur.execute('select observations.id,observations.field,fields.priority,observations.priority from observations left join fields on (observations.field=fields.id) where observations.status="Observed" order by fields.priority desc,observations.priority desc')
+    sdb.cur.execute('select observations.id,observations.field,fields.priority,observations.priority from observations left join fields on (observations.field=fields.id) where observations.status="Observed" order by observations.priority desc, fields.priority desc')
     results = sdb.cur.fetchone()
     sdb.close()
     return results
@@ -62,9 +63,9 @@ def skip_location(location='Juelich'):
 
 def get_next_pref(**kwargs):
     # return the name of the top-priority field balancing all locations
-    #running = get_running_observations()
-    #running_locs = count_runs_at_locations(running)
-    #next_run_location = running_locs[0].location
+    running = get_running_observations()
+    running_locs = count_runs_at_locations(running)
+    next_run_location = running_locs[0].location
     #results = get_next_at_location(location=next_run_location)
     results = get_next_observation()
     return {'field_name':results['field'], 

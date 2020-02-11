@@ -35,6 +35,7 @@ from airflow.models import Variable
 from airflow import settings
 from airflow.utils.log.logging_mixin import LoggingMixin
 from GRID_LRT.Staging.srmlist import srmlist
+from GRID_LRT.storage import gsifile
 from GRID_LRT import token
 from GRID_LRT.auth.get_picas_credentials import picas_cred
 import tempfile
@@ -228,7 +229,7 @@ def copy_to_archive(src_dir='gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.n
     mk_res = subprocess.Popen(['uberftp', '-mkdir', dest_dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     mk_res.communicate()
     src_files = gsifile.GSIFile(src_dir).list_dir()
-    dest_dir_obj = gisfile.GSIFile(dest_dir)
+    dest_dir_obj = gsifile.GSIFile(dest_dir)
     for source_file in src_files:
         copy_gsifile(source_file, dest_dir_obj)
 
