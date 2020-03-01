@@ -19,6 +19,8 @@ from AGLOW.airflow.utils.AGLOW_utils import count_from_task
 from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
 from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task
+from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_tokens
+from AGLOW.airflow.utils.AGLOW_utils import get_results_from_subdag
 
 from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
@@ -37,7 +39,7 @@ import logging
 
 
 def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
-    field_name = 'fields_'
+    field_name = 'pref3_'
 
     dag = DAG(dag_id=parent_dag_name+'.'+subdagname, default_args=dag_args, schedule_interval='@once' , catchup=False)
 
@@ -115,7 +117,7 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         tok_config=args_dict['pref_cal1_cfg'],
         pc_database = 'sksp2juelich',
         fields_task = {'name':'get_next_field','parent_dag':True},
-        files_per_token=1,
+        files_per_token=args_dict['files_per_job'],
         dag=dag)
         
 #Upload the parset to all the tokens
@@ -123,36 +125,14 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         token_task='token_cal',
         parent_dag=True,
         upload_file=args_dict['cal1_parset'],
-        parset_task = 'make_parsets',
         pc_database = 'sksp2juelich',
         dag=dag)
 
-    #sandbox_cal2 = LRTSandboxOperator(task_id='sbx_cal2',
-    #    sbx_config=args_dict['pref_cal2_cfg'],
-    #    dag=dag)
-     
-    tokens_cal2 = TokenCreator( task_id='token_cal2',
-        staging_task={'name':'check_calstaged','parent_dag':False},
-        sbx_task={'name':'sbx_cal2','parent_dag':False},
-        token_type=field_name,
-        files_per_token=999,
-        fields_task = {'name':'get_next_field','parent_dag':True} ,
-        tok_config=args_dict['pref_cal2_cfg'],
-        pc_database = 'sksp2juelich',
-        dag=dag)
-        
-    parset_cal2 = TokenUploader( task_id='cal_parset2',
-        token_task='token_cal2',
-        parent_dag=True,
-        upload_file=args_dict['cal2_parset'],
-        parset_task = 'make_parsets',
-        pc_database = 'sksp2juelich',
+    cal_results = PythonOperator(task_id='cal_results',
+        python_callable=get_results_from_subdag,
+        op_kwargs={'subdag_id':'SKSP_Launcher.launch_juelich', 'task':'token_cal', 'return_key':'CAL2_SOLUTIONS'},
         dag=dag)
 
-    #sandbox_targ1 = LRTSandboxOperator(task_id='sbx_targ1',
-    #    sbx_config=args_dict['pref_targ1_cfg'],
-    #    trigger_rule='all_done',        # The task will start when parents are success or skipped 
-    #    dag=dag)
         
     tokens_targ1 = TokenCreator( task_id='token_targ1',
         staging_task={'name':'check_targstaged','parent_dag':False},
@@ -169,7 +149,6 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         token_task='token_targ1',
         parent_dag=True,
         upload_file=args_dict['targ1_parset'],
-        parset_task = 'make_parsets',
         pc_database = 'sksp2juelich',
         dag=dag)
 
@@ -208,8 +187,9 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
             gsi_path = 'gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/distrib/SKSP/',
             dag=dag)
 
+
     branch_if_cal_exists >> check_calstaged
-    branch_if_cal_exists >> calib_done >> tokens_targ1
+    branch_if_cal_exists >> calib_done
 
 #checking if calibrator is staged
     check_calstaged >>  branching_cal
@@ -217,17 +197,13 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
     branching_cal >> files_staged >> join
  
     #join >> sandbox_cal 
-    join >> tokens_cal >> parset_cal >> tokens_cal2 >> parset_cal2
-
-    #sandbox_cal >> tokens_cal >> parset_cal >> sandbox_cal2 
-    #sandbox_cal2 >> tokens_cal2 >> parset_cal2 
+    join >> tokens_cal >> parset_cal >> calib_done >> cal_results 
 
     check_targstaged >> branch_targ_if_staging_needed
 
     branch_targ_if_staging_needed >> files_staged_targ >> join_targ
     branch_targ_if_staging_needed >> stage_targ >> join_targ
 
-    #join_targ >> sandbox_targ1 
     join_targ >> tokens_targ1
-    parset_cal2 >> tokens_targ1 >> parset_targ1 >> check_done_files
+    calib_done >> cal_results >>tokens_targ1 >> parset_targ1 >> check_done_files
     return dag

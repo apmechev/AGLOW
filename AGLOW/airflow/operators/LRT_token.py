@@ -110,8 +110,8 @@ class TokenCreator(BaseOperator):
             append_task = None, 
             fields_task = None,
             pc_database=None,
-            subband_prefix = "SB",
-            subband_suffix = "_",
+            subband_prefix = None,
+            subband_suffix = None,
             token_type = 'test_',
             files_per_token = 10,
 
@@ -122,8 +122,14 @@ class TokenCreator(BaseOperator):
         self.pc_database = pc_database
         self.tok_config  = tok_config  
         self.fields_task = fields_task
-        self.subband_prefix = subband_prefix
-        self.subband_suffix = subband_suffix
+        if subband_prefix:
+            self.subband_prefix = subband_prefix
+        else:
+            self.subband_prefix = "SB"
+        if subband_suffix:
+            self.subband_suffix = subband_suffix
+        else:
+            self.subband_suffix = "_"
         self.staging_task = staging_task
         self.append_task = append_task
         self.files_per_token = files_per_token
@@ -171,15 +177,24 @@ class TokenCreator(BaseOperator):
                 d[i[0]] = i[1]
         
         for token_file in d: 
-            logging.info(token_file) 
+            logging.info("Token file is  {}".format(token_file)) 
             with NamedTemporaryFile(delete=False) as savefile: 
                 for line in d[token_file]: 
                     savefile.write("{}\n".format(line).encode('utf-8'))
-            token_id="{}{}_{}".format(self.t_type,token_file,time.time())
+            # pref3_$FIELDNAME_$OBSID_$PIPELINE_SB$SBNUMBER
+            pipeline_step = pipe_type.split('_')[1]
+            # logging.info("Pipeline step is {}, type pipe_type is {}.".format(pipe_type, type(pipe_type)))
+            if 'cal' in pipe_type:
+            	token_id="{}_{}_{}".format(self.t_type, srms.obsid, pipeline_step)
+            elif 'targ' in pipe_type:
+                token_id="{}_{}_{}_SB{}".format(self.t_type, srms.obsid, pipeline_step, token_file)
+            else:
+                token_id="fields_$FIELDNAME_$OBSID_$PIPELINE: {}_{}_{}_{}_{}".format(
+                         self.t_type, token_file, srms.obsid, pipe_type.split('_')[1], time.time())
+
             logging.info(token_id)
             self.token_list.append(self.build_token(
                                  token_id,
-#                                token_id="{}{}_{}".format(self.t_type,token_file,time.time()),
                                 attachment={'name':'srm.txt', 'location':savefile.name})) 
             self.token_list[-1]['STARTSB'] = token_file 
             os.remove(savefile.name) 

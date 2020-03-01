@@ -44,7 +44,7 @@ from AGLOW.airflow.utils.AGLOW_utils import count_from_task
 from AGLOW.airflow.utils.AGLOW_utils import get_field_location_from_srmlist
 from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
-from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task 
+from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task
 from AGLOW.airflow.utils.AGLOW_utils import get_results_from_subdag
 
 
@@ -73,12 +73,14 @@ default_args = {
 dag = DAG('SKSP_Launcher', default_args=default_args, schedule_interval='@once' , catchup=False)
 
 args_dict_juelich = {
-                "cal1_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Calibrator-1.parset",
+                "cal1_parset":"/home/zmz/AGLOW/data/parsets/Pre-Facet-Calibrator-v3.parset",
                 "cal2_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset",
-                "targ1_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Target-1.parset",
-                'pref_cal1_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_cal1_juelich.cfg',
+                "targ1_parset":"/home/zmz/AGLOW/data/parsets/CI/Pre-Facet-Target1-v3.parset",
+                'pref_cal1_cfg':'/home/zmz/AGLOW/data/config/steps/cal_pref3.json',
                 'pref_cal2_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_cal2.cfg',
-                'pref_targ1_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_targ1.cfg'}
+                'pref_targ1_cfg':'/home/zmz/AGLOW/data/config/steps/targ1_pref3.json',
+                'files_per_job':999,
+                'subband_prefix':None }
 
 
 args_cal = {'attachments':
@@ -88,7 +90,7 @@ args_cal = {'attachments':
             'files_per_job':999,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
             'append_task':None,         #We are not adding keys to the tokens, so this is None
-            'field_prefix': "CI_pref",
+            'field_prefix': "pref3_",
             'srmfile_task': 'stage_cal',
             'subband_prefix':None,
             'NCPU' : 4
@@ -100,7 +102,7 @@ args_targ1 ={'attachments':
             'cfg':'/home/zmz/AGLOW/data/config/steps/targ1_pref3.json',
             'files_per_job':1,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
-            'field_prefix': "CI_pref",
+            'field_prefix': "pref3_",
             'append_task':{'name':'cal_results','parent_dag':True},
             'srmfile_task': 'stage_targ',
             'subband_prefix':None,
@@ -112,7 +114,7 @@ args_targ2 = {'attachments':
             'cfg':'/home/zmz/AGLOW/data/config/steps/targ2_pref3.json',
             'files_per_job':10,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
-            'field_prefix': "CI_pref",
+            'field_prefix': "pref3_",
             'append_task':None,
             'srmfile_task': 'targ1_results',
             'subband_prefix':'ABN',
