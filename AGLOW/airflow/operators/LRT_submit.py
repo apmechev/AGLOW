@@ -86,8 +86,8 @@ class LRTSubmit(BaseOperator):
         self.initialilze_submitter(location = self.location,
                 NCPU = self.NCPU, parameter_step = self.parameter_step)
         pc=get_picas_credentials.picas_cred()
-        print("TODO: Just listing all tokens, not just todo tokens: FIX:")
-        print(self.token_id)
+        logging.info("TODO: Just listing all tokens, not just todo tokens: FIX:")
+        logging.info(self.token_id)
         self.submitter.numjobs=int(len(tokens)) 
         if len(tokens)<1:
             raise RuntimeError("Not enough todo tokens to submit!")

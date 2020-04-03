@@ -77,6 +77,7 @@ def grid_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
             staging_task={'name':args_dict['srmfile_task'], 'parent_dag':True},
             append_task=args_dict['append_task'],
             token_type=args_dict['field_prefix'],
+            fields_task = {'name':'get_next_field','parent_dag':True},
             tok_config=args_dict['cfg'],
             subband_prefix=args_dict['subband_prefix'], 
             files_per_token=args_dict['files_per_job'],

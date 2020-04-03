@@ -116,6 +116,7 @@ def update_field_status_from_taskid(task_id, status,  **context):
 
 def update_OBSID_status_from_taskid(field_task_id,OBSID_task_id, status, **context):
     field_data = context['ti'].xcom_pull(field_task_id)
+    logging.info("Field_data is {}.".format(field_data))
     field_name = field_data['field_name']
     obsid_data = context['ti'].xcom_pull(OBSID_task_id)
     obsid = obsid_data['target_OBSID'][1:]

@@ -81,10 +81,19 @@ def make_srmfile_from_step_results(prev_step_token_task, parent_dag=None):
 def get_results_from_subdag(subdag_id, task='tokens', key="Results_location", return_key=None, **context):
     if not return_key:
         return_key=key
+    logging.info('subdag_id is {}, task_id is {}'.format(subdag_id, task))
     token_data = context['ti'].xcom_pull(dag_id=subdag_id, task_ids=task)
+    logging.info('token_data is {}'.format(token_data))
     token_type = token_data['token_type']
     token_ids = token_data['token_ids']
     return {return_key: get_result_files_from_tokenlist(token_type, token_ids, key)}
+
+def get_cal_from_dir(base_dir, return_key=None, **context):
+    cal_OBSID = get_task_instance(context, 'SKSP_Launcher.get_field_properties')['calib_OBSID']
+    directory = str(base_dir + cal_OBSID)
+    fold = gsifile.GSIFile(directory)
+    calfile = directory + '/CI_pref3_' + cal_OBSID + '.tar'
+    return {return_key: calfile} 
 
 
 def get_result_files_from_tokenlist(token_type, token_ids, key="Results_location", **kwargs):
@@ -324,14 +333,16 @@ def count_files_uberftp(directory):
     c=subprocess.Popen(['uberftp','-ls', directory],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     out=c.communicate()
-    if out[1]!='':
+    logging.info(out)
+    if len(out[0]) == 0:
         logging.warning("srmls failed to find a directory!! ")
         return 0
-    if 'lofsksp' not in out[0]:
-        logging.warning("no link found in folder!, returning 0 files")
-        return 0
+    #if 'lofsksp' not in out[0]:
+    #    logging.warning("no link found in folder!, returning 0 files")
+    #    return 0
     file_list=[directory+"/"+str(i.split()[-1])
-                            for i in out[0].strip().split("\r\n")]
+                            for i in str(out[0]).strip().split("\r\n")]
+    logging.info(file_list)
     return len(file_list)
 
 def get_var_from_task_decorator(Cls, upstream_task_id="", upstream_return_key="",u_task=None):
@@ -435,8 +446,16 @@ def stage_if_needed(stage_task, run_if_staged, run_if_not_staged,
     else:
         return run_if_not_staged
 
+
+def create_gsiftp_directory(gsiftp_directory):
+    logging.info(gsiftp_directory)
+    task = subprocess.Popen(['uberftp','-mkdir',gsiftp_directory], stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE)
+    output = task.communicate()
+    logging.info(output)
+
 def delete_gsiftp_files(gsiftp_directory):
-    del_task = subprocess.Popen(['uberftp','rm',gsiftp_directory+"/*"], stdout=subprocess.PIPE, 
+    del_task = subprocess.Popen(['uberftp','-rm',gsiftp_directory+"/*"], stdout=subprocess.PIPE, 
             stderr=subprocess.PIPE)
     output = del_task.communicate()
     if output[1] != '':

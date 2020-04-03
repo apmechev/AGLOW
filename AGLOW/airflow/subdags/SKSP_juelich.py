@@ -1,7 +1,7 @@
 from airflow import DAG                                                                                                                     
 from airflow.operators.bash_operator import BashOperator
 from AGLOW.airflow.operators.LTA_staging import LOFARStagingOperator
-from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus
+from AGLOW.airflow.operators.LRT_token import TokenCreator,TokenUploader,ModifyTokenStatus, ModifyTokenField
 from AGLOW.airflow.operators.LRT_submit import LRTSubmit
 from AGLOW.airflow.operators.data_staged import Check_staged
 from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist                                                                                                      
@@ -21,6 +21,9 @@ from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task
 from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_tokens
 from AGLOW.airflow.utils.AGLOW_utils import get_results_from_subdag
+from AGLOW.airflow.utils.AGLOW_utils import get_cal_from_dir
+from AGLOW.airflow.utils.AGLOW_MySQL_utils import update_OBSID_status_from_taskid
+from AGLOW.airflow.utils.AGLOW_MySQL_utils import get_AGLOW_field_properties
 
 from datetime import datetime, timedelta
 from airflow.operators.python_operator import PythonOperator
@@ -57,8 +60,8 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
     task_id = 'branch_if_cal_exists',
     provide_context = True,                   # Allows to access returned values from other tasks
     python_callable = count_from_task,
-    op_args = ['get_srmfiles', 'cal_srmfile', 'check_calstaged', 'calib_done',
-        "SKSP",'pref_cal2',1,True],
+    op_args = ['get_srmfiles', 'cal_srmfile', 'check_calstaged', 'cal_done_already',
+        "SKSP",'prefactor_v3.0/pref_cal',1,True],
     dag = dag)
         
 
@@ -75,11 +78,22 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
     dag=dag
 )   
     
-    calib_done = DummyOperator(
-    task_id='calib_done',
-    dag=dag
-)   
-    
+    calib_done = PythonOperator(
+        task_id = 'cal_done',
+        provide_context = True,
+        python_callable = update_OBSID_status_from_taskid,
+        op_args = ['get_next_field','get_field_properties',  'DI_cal_done'],
+        dag = dag)
+
+    cal_done_already = DummyOperator(task_id='cal_done_already',
+        dag=dag)
+
+
+    join_cal = DummyOperator(task_id='join_cal',
+            trigger_rule='one_success',
+            dag=dag)
+
+
     join = DummyOperator(
     task_id='join',
     trigger_rule='one_success',
@@ -128,9 +142,16 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
         pc_database = 'sksp2juelich',
         dag=dag)
 
+#    cal_results = PythonOperator(task_id='cal_results',
+#        python_callable=get_results_from_subdag,
+#        op_kwargs={'subdag_id':'SKSP_Launcher.launch_juelich', 'task':'token_cal', 
+#                   'return_key':'CAL2_SOLUTIONS'},
+#        dag=dag)
+
     cal_results = PythonOperator(task_id='cal_results',
-        python_callable=get_results_from_subdag,
-        op_kwargs={'subdag_id':'SKSP_Launcher.launch_juelich', 'task':'token_cal', 'return_key':'CAL2_SOLUTIONS'},
+        python_callable=get_cal_from_dir,
+        op_kwargs={'base_dir':'gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/diskonly/pipelines/SKSP/prefactor_v3.0/pref_cal/',
+        'return_key':'CAL2_SOLUTIONS'},
         dag=dag)
 
         
@@ -187,17 +208,16 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
             gsi_path = 'gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/distrib/SKSP/',
             dag=dag)
 
-
+    branch_if_cal_exists >> cal_done_already >> join_cal >> calib_done
     branch_if_cal_exists >> check_calstaged
-    branch_if_cal_exists >> calib_done
 
-#checking if calibrator is staged
+    #checking if calibrator is staged
     check_calstaged >>  branching_cal
     branching_cal >> stage >> join
     branching_cal >> files_staged >> join
  
     #join >> sandbox_cal 
-    join >> tokens_cal >> parset_cal >> calib_done >> cal_results 
+    join >> tokens_cal >> parset_cal >> join_cal
 
     check_targstaged >> branch_targ_if_staging_needed
 
@@ -205,5 +225,5 @@ def juelich_subdag(parent_dag_name, subdagname, dag_args, args_dict=None):
     branch_targ_if_staging_needed >> stage_targ >> join_targ
 
     join_targ >> tokens_targ1
-    calib_done >> cal_results >>tokens_targ1 >> parset_targ1 >> check_done_files
+    calib_done >> cal_results >> tokens_targ1 >> parset_targ1 >> check_done_files
     return dag

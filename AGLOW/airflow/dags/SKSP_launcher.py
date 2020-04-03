@@ -46,7 +46,7 @@ from AGLOW.airflow.utils.AGLOW_utils import set_field_status_from_task_return
 from AGLOW.airflow.utils.AGLOW_utils import modify_parset_from_fields_task 
 from AGLOW.airflow.utils.AGLOW_utils import check_folder_for_files_from_task
 from AGLOW.airflow.utils.AGLOW_utils import get_results_from_subdag
-
+from AGLOW.airflow.utils.AGLOW_utils import get_cal_from_dir
 
 from GRID_LRT.storage import gsifile
 
@@ -73,20 +73,20 @@ default_args = {
 dag = DAG('SKSP_Launcher', default_args=default_args, schedule_interval='@once' , catchup=False)
 
 args_dict_juelich = {
-                "cal1_parset":"/home/zmz/AGLOW/data/parsets/Pre-Facet-Calibrator-v3.parset",
+                "cal1_parset":"/home/timshim/Pre-Facet-Calibrator-v3.parset",
                 "cal2_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset",
-                "targ1_parset":"/home/zmz/AGLOW/data/parsets/CI/Pre-Facet-Target1-v3.parset",
-                'pref_cal1_cfg':'/home/zmz/AGLOW/data/config/steps/cal_pref3.json',
+                "targ1_parset":"/home/timshim/Pre-Facet-Target1-v3.parset",
+                'pref_cal1_cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/cal_pref3.json',
                 'pref_cal2_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_cal2.cfg',
-                'pref_targ1_cfg':'/home/zmz/AGLOW/data/config/steps/targ1_pref3.json',
+                'pref_targ1_cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/targ1_pref3.json',
                 'files_per_job':999,
                 'subband_prefix':None }
 
 
 args_cal = {'attachments':
                          [("Pre-Facet-Calibrator-v3.parset",
-                           "/home/zmz/AGLOW/data/parsets/Pre-Facet-Calibrator-v3.parset")],
-            'cfg':'/home/zmz/AGLOW/data/config/steps/cal_pref3.json',
+                           "/home/timshim/Pre-Facet-Calibrator-v3.parset")],
+            'cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/cal_pref3.json',
             'files_per_job':999,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
             'append_task':None,         #We are not adding keys to the tokens, so this is None
@@ -98,8 +98,8 @@ args_cal = {'attachments':
 
 args_targ1 ={'attachments':
                          [("Pre-Facet-Target1-v3.parset",
-                           "/home/zmz/AGLOW/data/parsets/CI/Pre-Facet-Target1-v3.parset")],
-            'cfg':'/home/zmz/AGLOW/data/config/steps/targ1_pref3.json',
+                           "/home/timshim/Pre-Facet-Target1-v3.parset")],
+            'cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/targ1_pref3.json',
             'files_per_job':1,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
             'field_prefix': "pref3_",
@@ -110,8 +110,8 @@ args_targ1 ={'attachments':
 
 args_targ2 = {'attachments':
                          [("Pre-Facet-Target2-v3.parset",
-                           "/home/zmz/AGLOW/data/parsets/Pre-Facet-Target2-v3.parset")],
-            'cfg':'/home/zmz/AGLOW/data/config/steps/targ2_pref3.json',
+                           "/home/timshim/Pre-Facet-Target2-v3.parset")],
+            'cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/targ2_pref3.json',
             'files_per_job':10,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
             'field_prefix': "pref3_",
@@ -285,6 +285,13 @@ juelich_dummy = DummyOperator(
     dag=dag
         )
 
+launch_juelich = SubDagOperator(
+        task_id = 'launch_juelich',
+        subdag = juelich_subdag('SKSP_Launcher','launch_juelich', default_args, args_dict=args_dict_juelich),
+        pool='test_juelich_pool',
+        dag=dag
+        )
+
 branch_targ_if_staging_needed = BranchPythonOperator(  
     task_id='branch_targ_if_staging_needed',
     provide_context=True,                   # Allows to access returned values from other tasks
@@ -305,11 +312,17 @@ join_targ = DummyOperator(
 
 #This task gets the "Results_location" key from the tokens created in
 #CI_prefactor.launch_cal
+#cal_results = PythonOperator(task_id='cal_results',
+#        python_callable=get_results_from_subdag,
+#        op_kwargs={'subdag_id':'SKSP_Launcher.launch_sara_calibrator', 'task':'tokens', 'return_key':'CAL2_SOLUTIONS'},
+#        dag=dag)
+
 cal_results = PythonOperator(task_id='cal_results',
-        python_callable=get_results_from_subdag,
-        op_kwargs={'subdag_id':'SKSP_Launcher.launch_sara_calibrator', 'task':'tokens', 'return_key':'CAL2_SOLUTIONS'},
+        python_callable=get_cal_from_dir,
+        op_kwargs={'base_dir':'gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/diskonly/pipelines/SKSP/prefactor_v3.0/pref_cal/',
+        'return_key':'CAL2_SOLUTIONS'},
         dag=dag)
- 
+
 stage_targ= LOFARStagingOperator( task_id='stage_targ',
         srmfile={'name':"get_srmfiles", 'parent_dag':False},
         srmkey = 'targ_srmfile',
@@ -379,12 +392,6 @@ targ_archived = PythonOperator(
         dag = dag)
 
 
-launch_juelich = SubDagOperator(
-        task_id = 'launch_juelich',
-        subdag = juelich_subdag('SKSP_Launcher','launch_juelich', default_args, args_dict=args_dict_juelich),
-        pool='test_juelich_pool',
-        dag=dag
-        )
 
 #Setting up the dependency graph of the workflow
 

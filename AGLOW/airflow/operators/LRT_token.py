@@ -34,6 +34,7 @@ from airflow.utils.decorators import apply_defaults
 from airflow.utils.file import TemporaryDirectory
 from airflow.utils.state import State
 from AGLOW.airflow.utils.AGLOW_utils import get_task_instance
+from AGLOW.airflow.utils.AGLOW_utils import create_gsiftp_directory
 
 #import progressbar
 from GRID_LRT.token import TokenList
@@ -204,24 +205,32 @@ class TokenCreator(BaseOperator):
             logging.info(self.append_task)
             logging.info(context)
             self.modify_fields(context)
+
+        for token in self.token_list:
+            token["OBSID"]=srms.obsid
+            token['RESULTS_DIR'] += "/" + str(srms.obsid)
+
+        token_variables['OBSID'] = srms.obsid
+        token_variables['RESULTS_DIR'] += "/" + str(srms.obsid)
+        
+        # create result directory if not exist
+        create_gsiftp_directory(token_variables['RESULTS_DIR'])
+        
         logging.info('Token type is '+self.t_type)
         logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+'/_view/overview_total')
         logging.info("Token settings are :")
         for i in token_variables.items():
             logging.info(str(i))
-
         logging.debug(srms)
-
-        for token in self.token_list:
-            token["OBSID"]=srms.obsid
         
         self.token_list.save()
         results = dict()
         results['num_jobs'] = len(d.keys())
-        results['output_dir'] = token_variables['RESULTS_DIR']+"/"+ str(srms.obsid)
+        results['output_dir'] = token_variables['RESULTS_DIR']
+        logging.info("output directory is {}".format(results['output_dir']))
         results['token_type'] = str(self.t_type)
         results['view'] = pipe_type
-        results['OBSID'] = srms.obsid
+        results['OBSID'] = token_variables['OBSID']
         results['token_ids'] = [i['_id'] for i in self.token_list]
         return results
 
@@ -474,7 +483,6 @@ class ModifyTokenField(BaseOperator):
         self.pc_database = pc_database
         self.token_task=token_task
         self.output_encoding = output_encoding
-        self.modification=modification
         self.state=State.QUEUED
         
     def execute(self, context):
