@@ -130,18 +130,24 @@ def archive_all_tokens(token_type, archive_location, delete=False):
     logging.info("Resulting archive is at "+archive_location+"/"+token_archive.split('/')[-1])
 
 
-def modify_parset(parset_path, freq_res, time_res, OBSID, flags ):
+def modify_parset(parset_path, freq_res, time_res, OBSID, flags, demix_sources ):
     """Takes in a base_parset path and changes the time and frequency resolution parameters 
     of this parset. Saves it into a tempfile. Returns the tempfile_path"""
     fh, abs_path = mkstemp()
     with open(parset_path, 'r') as file:
         filedata = file.read()
-        filedata = re.sub(r'\! avg_timestep\s+=\s\S?',
-                                      "! avg_timestep         = "+str(int(time_res)), filedata)
-        filedata = re.sub(r'\! avg_freqstep\s+=\s\S?',
-                                              "! avg_freqstep         = "+str(int(freq_res)), filedata)
-        filedata = re.sub(r'\! flag_baselines\s+=\s+\W\s+\S+\s+\W',
-                                              "! flag_baselines    = "+flags+ "\n", filedata)
+        #filedata = re.sub(r'\! avg_timestep\s+=\s\S?',
+        #                              "! avg_timestep         = "+str(int(time_res)), filedata)
+        #filedata = re.sub(r'\! avg_freqstep\s+=\s\S?',
+        #                                      "! avg_freqstep         = "+str(int(freq_res)), filedata)
+        filedata = re.sub(r'\! flag_baselines\s+=\s+\W\W',
+						"! flag_baselines    = "+flags+ "\n", filedata)
+        filedata = re.sub(r'\! demix_sources\s+=\s+\W\W\S+',
+                                                "! demix_sources    = "+demix_sources+ "\n", filedata)
+        if 'demix_sources' != 'None':
+                filedata = re.sub(r'\! demix_step\s+=\s+\W\W +\S+\W\W\W',
+                                                "! demix_sources    = {{ demix }} "+ "\n", filedata)
+
         file_ending=".MS"
         if 'gsmcal_solve' in filedata:
             file_ending='.ms'
@@ -172,14 +178,15 @@ def modify_parset_from_fields_task(parsets_dict={}, fields_task=None, time_avg=8
     cal_time = time_avg/int(math.floor(float(field_dict['calib_time_resolution'])))
     cal_OBSID = field_dict['calib_OBSID']
     targ_OBSID = field_dict['target_OBSID']
+    demix_sources = field_dict['demix_sources']
     resulting_parsets = {}
     if not flags:
         flags = ", ".join(field_dict['baseline_filter'].split(" ")) 
     for p_name, p_path in parsets_dict.items():
         if "Calib" in p_name:
-            resulting_parsets[p_name] = modify_parset(p_path, cal_freq, cal_time, cal_OBSID, flags)
+            resulting_parsets[p_name] = modify_parset(p_path, cal_freq, cal_time, cal_OBSID, flags, 'None')
         if "Targ" in p_name:
-            resulting_parsets[p_name] = modify_parset(p_path, targ_freq, targ_time, targ_OBSID, flags)
+            resulting_parsets[p_name] = modify_parset(p_path, targ_freq, targ_time, targ_OBSID, flags, demix_sources)
     return resulting_parsets
 
 
@@ -449,7 +456,7 @@ def stage_if_needed(stage_task, run_if_staged, run_if_not_staged,
 
 
 def create_gsiftp_directory(gsiftp_directory):
-    logging.info(gsiftp_directory)
+    logging.info('GSIFTP directory ' + gsiftp_directory)
     task = subprocess.Popen(['uberftp','-mkdir',gsiftp_directory], stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
     output = task.communicate()

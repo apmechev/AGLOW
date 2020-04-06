@@ -70,7 +70,8 @@ class dcacheSensor(BaseSensorOperator):
         g_result = g_proc.communicate() 
         num_done = self.parse_uberftpls(g_result[0])
         if num_done > self.num_jobs * self.threshold:
-            return None
+            logging.info("%d jobs done out of %d"%(num_done,self.num_jobs))
+            return True
         else:
             logging.info("Only %d jobs done out of %d"%(num_done,self.num_jobs))
             return False

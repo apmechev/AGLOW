@@ -57,7 +57,7 @@ def juelich_subdag_targ1(parent_dag_name, subdagname, dag_args, args_dict=None):
 
         
     tokens_targ1 = TokenCreator( task_id='token_targ1',
-        staging_task={'name':'check_targstaged','parent_dag':False},
+        staging_task ={'name':args_dict['srmfile_task'], 'parent_dag':True},
         sbx_task={'name':'sbx_targ1','parent_dag':False},
         srms_task={'name':args_dict['srmfile_task'], 'parent_dag':True},
         token_type=field_name,

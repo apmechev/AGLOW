@@ -85,6 +85,7 @@ def get_AGLOW_field_properties(field_step, **context):
             'field_name':str(props['field']),
             'baseline_filter':str(props['bad_baselines']),
             'calibrator_nsb':str(props['calibrator_nsb']),
+            'demix_sources':str(props['demix_sources']),
             'target_nsb':str(props['nsb'])}
 
 def get_one_observation(field_name):
