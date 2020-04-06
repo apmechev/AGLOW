@@ -23,7 +23,9 @@ from AGLOW.airflow.operators.LRT_storage_to_srm import Storage_to_Srmlist
 
 from AGLOW.airflow.subdags.SKSP_calibrator import calibrator_subdag
 from AGLOW.airflow.subdags.SKSP_target import target_subdag
+from AGLOW.airflow.subdags.SKSP_juelich_cal import juelich_subdag_cal
 from AGLOW.airflow.subdags.SKSP_juelich import juelich_subdag
+from AGLOW.airflow.subdags.SKSP_juelich_targ1 import juelich_subdag_targ1
 from AGLOW.airflow.subdags.stage_subdag import test_state_subdag
 
 from AGLOW.airflow.subdags.gridjob   import grid_subdag
@@ -72,14 +74,22 @@ default_args = {
 
 dag = DAG('SKSP_Launcher', default_args=default_args, schedule_interval='@once' , catchup=False)
 
-args_dict_juelich = {
-                "cal1_parset":"/home/timshim/Pre-Facet-Calibrator-v3.parset",
-                "cal2_parset":"/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/parsets/Pre-Facet-Calibrator-2.parset",
+args_dict_juelich_cal = {
+                "cal_parset":"/home/timshim/Pre-Facet-Calibrator-v3.parset",
+                'pref_cal_cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/cal_pref3.json',
+                'files_per_job':999,
+                'field_prefix': "pref3_",
+                'srmfile_task': 'stage_cal',
+                'subband_prefix':None }
+
+
+args_dict_juelich_targ = {
                 "targ1_parset":"/home/timshim/Pre-Facet-Target1-v3.parset",
-                'pref_cal1_cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/cal_pref3.json',
-                'pref_cal2_cfg':'/home/apmechev/.conda/envs/AGLOW/GRID_LRT/data/config/steps/pref_cal2.cfg',
                 'pref_targ1_cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/targ1_pref3.json',
                 'files_per_job':999,
+                'field_prefix': "pref3_",
+                'append_task':{'name':'cal_results','parent_dag':True},
+                'srmfile_task': 'stage_targ',
                 'subband_prefix':None }
 
 
@@ -188,25 +198,32 @@ get_LTA_location = PythonOperator(
         op_args = ['get_srmfiles', 'targ_srmfile'],
         dag = dag)
 
-launch_at_lta_location = BranchPythonOperator(
-        task_id = 'launch_at_lta_location',
+launch_cal_at_lta_location = BranchPythonOperator(
+        task_id = 'launch_cal_at_lta_location',
         python_callable = select_LTA_location,
         provide_context = True,
-        op_args = ['get_LTA_location','launch_at_sara','launch_at_juelich'],
-        dag = dag
+        op_args = ['get_LTA_location','launch_sara_calibrator','launch_juelich_cal'],
+        dag = dag)
+
+launch_targ_at_lta_location = BranchPythonOperator(
+        task_id = 'launch_targ_at_lta_location',
+        python_callable = select_LTA_location,
+        provide_context = True,
+        op_args = ['get_LTA_location','launch_sara_target','launch_juelich_targ1'],
+        dag = dag)
+
+failure = PythonOperator(
+        task_id='failure',
+        python_callable=fail_dag,
+        trigger_rule='one_failed',
+        dag=dag
         )
 
-    
-launch_at_sara = DummyOperator(
-        task_id='launch_at_sara',
+launch_job = DummyOperator(
+        task_id='launch_job',
         dag=dag
-        )   
-
-launch_at_juelich = DummyOperator(
-       task_id='launch_at_juelich',      
-       dag=dag
-        )   
-        
+        )
+    
 
 ###########Calibrator branches#
 branch_if_cal_exists = BranchPythonOperator(
@@ -278,20 +295,21 @@ launch_sara_calibrator = SubDagOperator(
         dag=dag
         )
 
-   
-juelich_dummy = DummyOperator(
-    task_id='juelich_dummy',
-    trigger_rule='all_success',
-    dag=dag
-        )
-
-launch_juelich = SubDagOperator(
-        task_id = 'launch_juelich',
-        subdag = juelich_subdag('SKSP_Launcher','launch_juelich', default_args, args_dict=args_dict_juelich),
+launch_juelich_cal = SubDagOperator(
+        task_id = 'launch_juelich_cal',
+        subdag = juelich_subdag_cal('SKSP_Launcher','launch_juelich_cal', default_args, args_dict=args_dict_juelich_cal),
         pool='test_juelich_pool',
         dag=dag
         )
 
+launch_juelich_targ1 = SubDagOperator(
+        task_id = 'launch_juelich_targ1',
+        subdag = juelich_subdag_targ1('SKSP_Launcher','launch_juelich_targ1', default_args, args_dict=args_dict_juelich_targ),
+        pool='test_juelich_pool',
+        dag=dag
+        )
+
+   
 branch_targ_if_staging_needed = BranchPythonOperator(  
     task_id='branch_targ_if_staging_needed',
     provide_context=True,                   # Allows to access returned values from other tasks
@@ -311,12 +329,6 @@ join_targ = DummyOperator(
 )   
 
 #This task gets the "Results_location" key from the tokens created in
-#CI_prefactor.launch_cal
-#cal_results = PythonOperator(task_id='cal_results',
-#        python_callable=get_results_from_subdag,
-#        op_kwargs={'subdag_id':'SKSP_Launcher.launch_sara_calibrator', 'task':'tokens', 'return_key':'CAL2_SOLUTIONS'},
-#        dag=dag)
-
 cal_results = PythonOperator(task_id='cal_results',
         python_callable=get_cal_from_dir,
         op_kwargs={'base_dir':'gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/diskonly/pipelines/SKSP/prefactor_v3.0/pref_cal/',
@@ -344,6 +356,7 @@ launch_sara_target = SubDagOperator(
         subdag = grid_subdag('SKSP_Launcher','launch_sara_target', default_args, args_dict=args_targ1),
         dag=dag
         )
+
 targ1_results =  PythonOperator(task_id='targ1_results',
         python_callable=make_srmlist_from_results,
         op_kwargs={'results_subdag':'SKSP_Launcher.launch_sara_target', 'task':'tokens'},
@@ -353,18 +366,6 @@ targ1_results =  PythonOperator(task_id='targ1_results',
 launch_target2 = SubDagOperator(
         task_id = 'launch_target2',
         subdag = grid_subdag('SKSP_Launcher','launch_target2', default_args, args_dict=args_targ2),
-        dag=dag
-        )
-
-sara_targ_dummy = DummyOperator(
-        task_id='sara_targ_dummy',
-        trigger_rule='one_success',
-        dag=dag)
-
-failure = PythonOperator(
-        task_id='failure',
-        python_callable=fail_dag,
-        trigger_rule='one_failed',
         dag=dag
         )
 
@@ -396,37 +397,42 @@ targ_archived = PythonOperator(
 #Setting up the dependency graph of the workflow
 
 
-#Branch if calibrator already processed
-get_next_field >> get_field_properties >> start_field >> get_srmfiles 
+## Linear part up to first split
+get_next_field >> get_field_properties >> start_field >> get_srmfiles >> get_LTA_location >> launch_job
 
-get_srmfiles >>  get_LTA_location  
+## At launch job branch to check the target is staged and to check if cal exists
+launch_job >> branch_if_cal_exists
+launch_job >> check_targstaged >> branch_targ_if_staging_needed
 
-get_LTA_location >>  launch_at_lta_location
-launch_at_lta_location >> launch_at_sara
-launch_at_lta_location >> launch_at_juelich
+## Stage the target if needed and otherwise processs
+branch_targ_if_staging_needed >> files_staged_targ >> join_targ
+branch_targ_if_staging_needed >>stage_targ >> join_targ
 
-launch_at_juelich >> launch_juelich 
-launch_at_sara  >> branch_if_cal_exists >> cal_done_already >> join_cal >> calib_done
-
+## See if calibrator exists or not and stage if does not.
+branch_if_cal_exists  >> cal_done_already >> join_cal >> calib_done
 branch_if_cal_exists >> check_calstaged >> branching_cal
 branching_cal >> files_staged >> join 
 branching_cal >> stage >> join 
 
-launch_sara_calibrator >> join_cal
+## Launch the calibrator by spliting to go into either juelich or sara
+join >> launch_cal_at_lta_location
+launch_cal_at_lta_location >> launch_sara_calibrator >> join_cal
+launch_cal_at_lta_location >> launch_juelich_cal >> join_cal
+launch_sara_calibrator >> failure
+launch_juelich_cal >> failure
+join_cal >> calib_done >> cal_results
 
-join >> launch_sara_calibrator >> failure
+## Launch the target by spliting to go into either juelich or sara
+cal_results >> launch_targ_at_lta_location
+join_targ >> launch_targ_at_lta_location
+launch_targ_at_lta_location >> launch_sara_target >> targ1_results >> launch_target2
+launch_targ_at_lta_location >> launch_juelich_targ1 
+launch_sara_target >> failure
+launch_juelich_targ1 >> failure
 
-launch_juelich >>failure
-
-launch_at_sara >> check_targstaged >> branch_targ_if_staging_needed 
-branch_targ_if_staging_needed >> files_staged_targ >> join_targ
-branch_targ_if_staging_needed >>stage_targ >> join_targ
-
-join_targ >> launch_sara_target
-calib_done >> cal_results >> launch_sara_target >> targ1_results >> launch_target2
-launch_target2 >> sara_targ_dummy >> targ_processed 
-launch_target2 >> failure 
-
-launch_juelich>> juelich_dummy >> targ_processed
-
+## Do the final bit
+launch_target2 >> targ_processed
+launch_target2 >> failure
+launch_juelich_targ1 >> targ_processed
 targ_processed >> copy_to_archive_task >> targ_archived
+

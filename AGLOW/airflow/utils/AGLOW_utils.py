@@ -89,7 +89,7 @@ def get_results_from_subdag(subdag_id, task='tokens', key="Results_location", re
     return {return_key: get_result_files_from_tokenlist(token_type, token_ids, key)}
 
 def get_cal_from_dir(base_dir, return_key=None, **context):
-    cal_OBSID = get_task_instance(context, 'SKSP_Launcher.get_field_properties')['calib_OBSID']
+    cal_OBSID = get_task_instance(context, 'get_field_properties')['calib_OBSID']
     directory = str(base_dir + cal_OBSID)
     fold = gsifile.GSIFile(directory)
     calfile = directory + '/CI_pref3_' + cal_OBSID + '.tar'
@@ -235,6 +235,7 @@ def copy_to_archive(src_dir='gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.n
     OBSID = get_task_instance(context, 'get_field_properties')['target_OBSID']
     src_dir = src_dir+'/'+OBSID+"/"
     dest_dir = dest_dir+"/"+OBSID+"/"
+    logging.info("Destination directory is {}".format(dest_dir))
     mk_res = subprocess.Popen(['uberftp', '-mkdir', dest_dir], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     mk_res.communicate()
     src_files = gsifile.GSIFile(src_dir).list_dir()

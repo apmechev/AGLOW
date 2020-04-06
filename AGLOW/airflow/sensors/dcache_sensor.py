@@ -61,6 +61,8 @@ class dcacheSensor(BaseSensorOperator):
     def poke(self, context):
         if not hasattr(self,'dcache_location'):
             self.get_picas_values(context)
+        if not hasattr(self,'OBSID'):
+            self.get_picas_obsid(context)
         if self.gsi_path:
             self.build_dcache_location_from_gsi_folder(self.gsi_path)
         g_proc = subprocess.Popen(['uberftp','-ls', self.dcache_location] ,
@@ -74,7 +76,8 @@ class dcacheSensor(BaseSensorOperator):
             return False
 
     def parse_uberftpls(self,result):
-        num_links = sum(1 for link in str(result).split(b'\n') if len(link) > 1)
+        logging.info("Results is" + str(result))
+        num_links = sum(1 for link in str(result).encode().split(b'\n') if len(link) > 1)
         return num_links 
 
     def get_picas_values(self, context):
@@ -87,6 +90,11 @@ class dcacheSensor(BaseSensorOperator):
         if self.num_jobs == 0:
             raise RuntimeError("Zero Jobs expected from  "+str(self.token_task)+" task. ")
         logging.info('Checking files in : ' + self.dcache_location)
+
+    def get_picas_obsid(self, context):
+        t_task = context['task_instance'].xcom_pull(task_ids=self.token_task)
+        self.OBSID = t_task['OBSID']
+        logging.info('From token found OBSID ' + self.OBSID)
 
     def build_dcache_location_from_gsi_folder(self, folder_path):
         self.dcache_location = self.gsi_path+"/" + self.OBSID

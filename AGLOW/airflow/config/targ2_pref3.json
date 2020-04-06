@@ -1,0 +1,64 @@
+{
+    "PicasApiVersion": 0.5,
+    "Job": {
+        "NCPU": 8,
+        "parameter_step": 1,
+        "queue": "medium",
+        "variables": {
+            "OBSID": "",
+            "PIPELINE_STEP": "pref3_targ2_CI",
+            "RESULTS_DIR": "gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/distrib/SKSP/prefactor_v3.0",
+            "STARTSB": "000"
+        },
+        "wholenode": false
+    },
+    "Token": {
+        "status": "queued",
+        "times": {},
+        "upload": {
+            "add_date": false,
+            "date_granularity":"hour",
+            "gzip": false,
+            "location": "$RESULTS_DIR",
+            "overwrite": false,
+            "template": "pref3_targ2_$OBSID_$STARTSB_$DATE"
+        },
+        "variables": {
+            "_attachments": {
+                "$PARSET": "Pre-Facet-Target2-v3.parset",
+                "$SRMFILE": "srm.txt"
+            },
+            "_token_keys": {
+                "$OBSID": "OBSID",
+                "$PIPELINE_STEP": "PIPELINE_STEP",
+                "$RESULTS_DIR": "RESULTS_DIR",
+                "$STARTSB": "STARTSB"
+            }
+        }
+    },
+    "container": {
+        "singularity": {
+            "SIMG": "gsiftp://gridftp.grid.sara.nl:2811/pnfs/grid.sara.nl/data/lofar/user/sksp/distrib/software/shub_mirror/tikk3r/lofar-grid-hpccloud/lofar_sksp",
+            "SIMG_COMMIT": "e7512b7e92e5a3124e6ed177650e99a8c4eb2263"
+        }
+    },
+    "sandbox": {
+        "git": {
+            "branch": "prefactor_3.0",
+            "url": "https://github.com/apmechev/GRID_Sandbox.git"
+        },
+        "scripts": [
+            {
+                "prefactor": {
+                    "branch": "V3.0",
+                    "checkout_dir": "prefactor",
+                    "url": "https://github.com/lofar-astron/prefactor.git"
+                }
+            }
+        ]
+    },
+    "downloader":{"executable":"globus-url-copy",
+        "options":["-rst","-st", "30","-fast","-v"],
+        "extract":"true"
+    }
+}
