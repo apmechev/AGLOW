@@ -61,7 +61,7 @@ def juelich_subdag_cal(parent_dag_name, subdagname, dag_args, args_dict=None):
         staging_task ={'name':args_dict['srmfile_task'], 'parent_dag':True},
         token_type=field_name,
         tok_config=args_dict['pref_cal_cfg'],
-        pc_database = 'sksp2juelich',
+        pc_database = 'sksp2juelich_pref3',
         fields_task = {'name':'get_next_field','parent_dag':True},
         files_per_token=args_dict['files_per_job'],
         dag=dag)
@@ -71,7 +71,7 @@ def juelich_subdag_cal(parent_dag_name, subdagname, dag_args, args_dict=None):
         token_task='token_cal',
         parent_dag=True,
         upload_file=args_dict['cal_parset'],
-        pc_database = 'sksp2juelich',
+        pc_database = 'sksp2juelich_pref3',
         dag=dag)
 
     check_caldone_files = dcacheSensor(task_id='check_caldone_files',

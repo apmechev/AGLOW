@@ -55,23 +55,47 @@ def juelich_subdag_targ1(parent_dag_name, subdagname, dag_args, args_dict=None):
                 'pref_cal2_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_cal2.cfg',
                 'pref_targ1_cfg':'/home/apmechev/GRIDTOOLS/GRID_LRT/GRID_LRT/data/config/steps/pref_targ1.cfg'}
 
+    #Create the tokens and populate the srm.txt
+    tokens_targ1 = TokenCreator(task_id='token_targ1',
+            staging_task={'name':args_dict['srmfile_task'], 'parent_dag':True},
+            append_task=args_dict['append_task'],
+            token_type=args_dict['field_prefix'],
+            fields_task = {'name':'get_next_field','parent_dag':True},
+            tok_config=args_dict['pref_targ1_cfg'],
+            subband_prefix=args_dict['subband_prefix'],
+            files_per_token=args_dict['files_per_job'],
+            pc_database = 'sksp2juelich_pref3',
+            dag=dag)
+    logging.info("Tokens created for subdag " + subdagname)
+
+    #Upload the parset to all the tokens
+    if 'attachments' in args_dict.keys():
+        for i in args_dict['attachments']:
+            parset = TokenUploader(task_id='parset_'+str(i[0]),
+                                   token_task='tokens',
+                                   upload_file=i[1],
+                                upload_filename = i[0],
+                                parent_dag = True,
+                                dag=dag)
+
+
         
-    tokens_targ1 = TokenCreator( task_id='token_targ1',
-        staging_task ={'name':args_dict['srmfile_task'], 'parent_dag':True},
-        sbx_task={'name':'sbx_targ1','parent_dag':False},
-        srms_task={'name':args_dict['srmfile_task'], 'parent_dag':True},
-        token_type=field_name,
-        files_per_token=1,
-        fields_task = {'name':'get_next_field','parent_dag':True} ,
-        tok_config=args_dict['pref_targ1_cfg'],
-        pc_database = 'sksp2juelich',
-        dag=dag)
+    #tokens_targ1 = TokenCreator( task_id='token_targ1',
+    #    staging_task ={'name':args_dict['srmfile_task'], 'parent_dag':True},
+    #    sbx_task={'name':'sbx_targ1','parent_dag':False},
+    #    srms_task={'name':args_dict['srmfile_task'], 'parent_dag':True},
+    #    token_type=field_name,
+    #    files_per_token=1,
+    #    fields_task = {'name':'get_next_field','parent_dag':True} ,
+    #    tok_config=args_dict['pref_targ1_cfg'],
+    #    pc_database = 'sksp2juelich',
+    #    dag=dag)
         
     parset_targ1 = TokenUploader( task_id='targ_parset1',
         token_task='token_targ1',
         parent_dag=True,
         upload_file=args_dict['targ1_parset'],
-        pc_database = 'sksp2juelich',
+        pc_database = 'sksp2juelich_pref3',
         dag=dag)
 
     check_done_files = dcacheSensor(task_id='check_done_files',

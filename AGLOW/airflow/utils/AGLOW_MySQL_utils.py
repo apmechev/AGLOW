@@ -68,14 +68,16 @@ def get_next_pref(**kwargs):
     next_run_location = running_locs[0].location
     #results = get_next_at_location(location=next_run_location)
     results = get_next_observation()
+    print(results)
     return {'field_name':results['field'], 
-            'sanitized_field_name':results['field'].replace('+','_')}
+            'sanitized_field_name':results['field'].replace('+','_'),'target_OBSID':results['id']}
 
 
 
 def get_AGLOW_field_properties(field_step, **context):
     name = context['ti'].xcom_pull(field_step)['field_name']
-    props = get_one_observation(name)
+    target_OBSID = context['ti'].xcom_pull(field_step)['target_OBSID']
+    props = get_one_observation(name,target_OBSID)
     return {'target_OBSID':'L' + str(int(props['id'])),
             'targ_freq_resolution':int(props['nchan']),
             'targ_time_resolution':int(props['dt']),
@@ -88,9 +90,9 @@ def get_AGLOW_field_properties(field_step, **context):
             'demix_sources':str(props['demix_sources']),
             'target_nsb':str(props['nsb'])}
 
-def get_one_observation(field_name):
+def get_one_observation(field_name,obsid):
     sdb=SurveysDB()
-    idd=sdb.get_observation(field_name)
+    idd=sdb.get_observation(field_name,obsid)
     sdb.close()
     return idd
 

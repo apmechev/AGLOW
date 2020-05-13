@@ -92,7 +92,7 @@ def get_cal_from_dir(base_dir, return_key=None, **context):
     cal_OBSID = get_task_instance(context, 'get_field_properties')['calib_OBSID']
     directory = str(base_dir + cal_OBSID)
     fold = gsifile.GSIFile(directory)
-    calfile = directory + '/CI_pref3_' + cal_OBSID + '.tar'
+    calfile = directory + '/pref3_cal_' + cal_OBSID + '.tar'
     return {return_key: calfile} 
 
 

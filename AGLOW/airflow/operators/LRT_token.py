@@ -154,9 +154,9 @@ class TokenCreator(BaseOperator):
             task_name = self.fields_task['name']
             task_parent_dag = self.fields_task['parent_dag']
             try:
-                app = get_task_instance(context, task_name, task_parent_dag)['sanitized_field_name']
+                app = get_task_instance(context, task_name, task_parent_dag)['sanitized_field_name'] + '_' + srms.obsid
             except KeyError:
-                app = get_task_instance(context, task_name, task_parent_dag)['field_name']
+                app = get_task_instance(context, task_name, task_parent_dag)['field_name'] + '_' + srms.obsid
         else:
             app = srms.obsid
         self.t_type= self.t_type+app
@@ -217,7 +217,8 @@ class TokenCreator(BaseOperator):
         create_gsiftp_directory(token_variables['RESULTS_DIR'])
         
         logging.info('Token type is '+self.t_type)
-        logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+'/_view/overview_total')
+        logging.info('Tokens are available at https://picas-lofar.grid.surfsara.nl:6984/_utils/database.html?'+pc.database+'/_design/'+self.t_type+'/_view/overview_view')
+        logging.info('Tokens are in view'+pipe_type)
         logging.info("Token settings are :")
         for i in token_variables.items():
             logging.info(str(i))

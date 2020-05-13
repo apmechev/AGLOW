@@ -78,7 +78,7 @@ args_dict_juelich_cal = {
                 "cal_parset":"/home/timshim/Pre-Facet-Calibrator-v3.parset",
                 'pref_cal_cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/cal_pref3.json',
                 'files_per_job':999,
-                'field_prefix': "pref3_",
+                'field_prefix': "pref3_cal_",
                 'srmfile_task': 'stage_cal',
                 'subband_prefix':None }
 
@@ -86,8 +86,8 @@ args_dict_juelich_cal = {
 args_dict_juelich_targ = {
                 "targ1_parset":"/home/timshim/Pre-Facet-Target1-v3.parset",
                 'pref_targ1_cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/targ1_pref3.json',
-                'files_per_job':999,
-                'field_prefix': "pref3_",
+                'files_per_job':1,
+                'field_prefix': "pref3_targ_",
                 'append_task':{'name':'cal_results','parent_dag':True},
                 'srmfile_task': 'stage_targ',
                 'subband_prefix':None }
@@ -100,7 +100,7 @@ args_cal = {'attachments':
             'files_per_job':999,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
             'append_task':None,         #We are not adding keys to the tokens, so this is None
-            'field_prefix': "pref3_",
+            'field_prefix': "pref3_cal_",
             'srmfile_task': 'stage_cal',
             'subband_prefix':None,
             'NCPU' : 4
@@ -112,7 +112,7 @@ args_targ1 ={'attachments':
             'cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/targ1_pref3.json',
             'files_per_job':1,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
-            'field_prefix': "pref3_",
+            'field_prefix': "pref3_targ1_",
             'append_task':{'name':'cal_results','parent_dag':True},
             'srmfile_task': 'stage_targ',
             'subband_prefix':None,
@@ -124,7 +124,7 @@ args_targ2 = {'attachments':
             'cfg':'/home/timshim/GRID_LRT3/GRID_LRT/tim_scripts/targ2_pref3.json',
             'files_per_job':10,
             'token_prefix': datetime.strftime(datetime.now(), "%Y-%m-%d"),
-            'field_prefix': "pref3_",
+            'field_prefix': "pref3_targ2_",
             'append_task':None,
             'srmfile_task': 'targ1_results',
             'subband_prefix':'ABN',
@@ -379,7 +379,7 @@ targ_processed = PythonOperator(
         task_id = 'targ_processed',
         provide_context = True,
         python_callable = update_OBSID_status_from_taskid,
-        trigger_rule='all_done',
+	trigger_rule='one_success',
         op_args = ['get_next_field','get_field_properties',  'DI_Processed'],
         dag = dag)
 
@@ -388,7 +388,7 @@ targ_archived = PythonOperator(
         task_id = 'targ_arhived',
         provide_context = True,
         python_callable = update_OBSID_status_from_taskid,
-        trigger_rule='all_done',
+	trigger_rule='one_success',
         op_args = ['get_next_field','get_field_properties',  'Archived'],
         dag = dag)
 
